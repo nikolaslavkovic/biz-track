@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -48,6 +49,28 @@ function ChartTooltip({
   );
 }
 
+function ChartShell({ children }: { children: React.ReactNode }) {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setReady(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
+
+  if (!ready) {
+    return (
+      <div className="flex h-full w-full items-center justify-center text-sm text-[var(--muted)]">
+        Učitavam grafikon…
+      </div>
+    );
+  }
+
+  return (
+    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+      {children}
+    </ResponsiveContainer>
+  );
+}
+
 export function FinanceCharts({ series }: { series: SeriesPoint[] }) {
   return (
     <div className="grid gap-4 lg:grid-cols-2">
@@ -58,9 +81,9 @@ export function FinanceCharts({ series }: { series: SeriesPoint[] }) {
         <p className="mb-4 text-sm text-[var(--muted)]">
           Mesečni pregled prihoda i ukupnih troškova
         </p>
-        <div className="h-72 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={series}>
+        <div className="h-72 w-full min-h-[18rem]">
+          <ChartShell>
+            <AreaChart data={series} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="zaradaFill" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#0f766e" stopOpacity={0.35} />
@@ -71,11 +94,11 @@ export function FinanceCharts({ series }: { series: SeriesPoint[] }) {
                   <stop offset="95%" stopColor="#1d4e89" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#d6d3d1" />
-              <XAxis dataKey="label" tick={{ fill: "#78716c", fontSize: 12 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#cfd8de" />
+              <XAxis dataKey="label" tick={{ fill: "#5b6b76", fontSize: 12 }} />
               <YAxis
-                tick={{ fill: "#78716c", fontSize: 12 }}
-                tickFormatter={(v) => `${Math.round(v / 1000)}k`}
+                tick={{ fill: "#5b6b76", fontSize: 12 }}
+                tickFormatter={(v) => `${Math.round(Number(v) / 1000)}k`}
               />
               <Tooltip content={<ChartTooltip />} />
               <Legend />
@@ -86,6 +109,7 @@ export function FinanceCharts({ series }: { series: SeriesPoint[] }) {
                 stroke="#0f766e"
                 fill="url(#zaradaFill)"
                 strokeWidth={2}
+                isAnimationActive={false}
               />
               <Area
                 type="monotone"
@@ -94,9 +118,10 @@ export function FinanceCharts({ series }: { series: SeriesPoint[] }) {
                 stroke="#1d4e89"
                 fill="url(#trosakFill)"
                 strokeWidth={2}
+                isAnimationActive={false}
               />
             </AreaChart>
-          </ResponsiveContainer>
+          </ChartShell>
         </div>
       </Card>
 
@@ -107,14 +132,14 @@ export function FinanceCharts({ series }: { series: SeriesPoint[] }) {
         <p className="mb-4 text-sm text-[var(--muted)]">
           Zarada minus troškovi (uključujući rad)
         </p>
-        <div className="h-72 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={series}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#d6d3d1" />
-              <XAxis dataKey="label" tick={{ fill: "#78716c", fontSize: 12 }} />
+        <div className="h-72 w-full min-h-[18rem]">
+          <ChartShell>
+            <BarChart data={series} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#cfd8de" />
+              <XAxis dataKey="label" tick={{ fill: "#5b6b76", fontSize: 12 }} />
               <YAxis
-                tick={{ fill: "#78716c", fontSize: 12 }}
-                tickFormatter={(v) => `${Math.round(v / 1000)}k`}
+                tick={{ fill: "#5b6b76", fontSize: 12 }}
+                tickFormatter={(v) => `${Math.round(Number(v) / 1000)}k`}
               />
               <Tooltip content={<ChartTooltip />} />
               <Bar
@@ -122,9 +147,10 @@ export function FinanceCharts({ series }: { series: SeriesPoint[] }) {
                 name="Neto"
                 fill="#0f766e"
                 radius={[6, 6, 0, 0]}
+                isAnimationActive={false}
               />
             </BarChart>
-          </ResponsiveContainer>
+          </ChartShell>
         </div>
       </Card>
     </div>
