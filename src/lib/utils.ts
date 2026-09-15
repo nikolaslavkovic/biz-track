@@ -9,9 +9,41 @@ export function formatMoney(value: number, currency = "RSD"): string {
   return new Intl.NumberFormat("sr-RS", {
     style: "currency",
     currency,
-    maximumFractionDigits: 0,
+    maximumFractionDigits: currency === "EUR" ? 2 : 0,
   }).format(value || 0);
 }
+
+/** Convert sale price to dinars for totals/charts. */
+export function toRsd(
+  amount: number,
+  currency: string | null | undefined,
+  eurToRsd: number,
+): number {
+  const value = Number(amount) || 0;
+  if ((currency || "RSD") === "EUR") {
+    return value * (eurToRsd || 0);
+  }
+  return value;
+}
+
+/** Show entered price; if EUR, also show dinar equivalent. */
+export function formatSalePrice(
+  amount: number,
+  currency: string | null | undefined,
+  eurToRsd: number,
+): string {
+  const cur = currency === "EUR" ? "EUR" : "RSD";
+  const main = formatMoney(amount, cur);
+  if (cur === "EUR") {
+    return `${main} ≈ ${formatMoney(toRsd(amount, "EUR", eurToRsd), "RSD")}`;
+  }
+  return main;
+}
+
+export const SALE_CURRENCIES = [
+  { value: "RSD", label: "Dinari (RSD)" },
+  { value: "EUR", label: "Evri (EUR)" },
+] as const;
 
 export function formatHours(value: number): string {
   return `${Number(value || 0).toFixed(1)} h`;

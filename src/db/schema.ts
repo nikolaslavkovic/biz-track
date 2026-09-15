@@ -14,8 +14,13 @@ export const projects = sqliteTable("projects", {
   })
     .notNull()
     .default("aktivan"),
-  /** Ukupna prodajna cena cele konstrukcije */
+  /** Ukupna prodajna cena cele konstrukcije (u valuti revenueCurrency) */
   revenue: real("revenue").notNull().default(0),
+  revenueCurrency: text("revenue_currency", {
+    enum: ["RSD", "EUR"],
+  })
+    .notNull()
+    .default("RSD"),
   lengthM: real("length_m").notNull().default(0),
   widthM: real("width_m").notNull().default(0),
   heightM: real("height_m").notNull().default(0),
@@ -27,6 +32,11 @@ export const projects = sqliteTable("projects", {
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),
+});
+
+export const settings = sqliteTable("settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
 });
 
 export const workers = sqliteTable("workers", {

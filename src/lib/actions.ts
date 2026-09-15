@@ -3,7 +3,7 @@
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
-import { expenses, projects, workers, workLogs } from "@/db/schema";
+import { expenses, projects, settings, workers, workLogs } from "@/db/schema";
 import { formatWeekRange, fromWeekInputValue } from "@/lib/utils";
 
 function revalidateAll() {
@@ -11,6 +11,19 @@ function revalidateAll() {
   revalidatePath("/projekti");
   revalidatePath("/troskovi");
   revalidatePath("/radnici");
+}
+
+export async function updateEurRate(formData: FormData) {
+  const rate = Number(formData.get("eurToRsd"));
+  if (!rate || rate <= 0) throw new Error("Kurs mora biti veći od 0");
+  await db
+    .insert(settings)
+    .values({ key: "eur_to_rsd", value: String(rate) })
+    .onConflictDoUpdate({
+      target: settings.key,
+      set: { value: String(rate) },
+    });
+  revalidateAll();
 }
 
 export async function createProject(formData: FormData) {
@@ -29,6 +42,9 @@ export async function createProject(formData: FormData) {
       | "zavrsen"
       | "pauziran"),
     revenue: Number(formData.get("revenue") || 0),
+    revenueCurrency: (String(formData.get("revenueCurrency") || "RSD") as
+      | "RSD"
+      | "EUR"),
     lengthM: Number(formData.get("lengthM") || 0),
     widthM: Number(formData.get("widthM") || 0),
     heightM: Number(formData.get("heightM") || 0),
@@ -57,6 +73,9 @@ export async function updateProject(formData: FormData) {
         | "zavrsen"
         | "pauziran",
       revenue: Number(formData.get("revenue") || 0),
+      revenueCurrency: String(formData.get("revenueCurrency") || "RSD") as
+        | "RSD"
+        | "EUR",
       lengthM: Number(formData.get("lengthM") || 0),
       widthM: Number(formData.get("widthM") || 0),
       heightM: Number(formData.get("heightM") || 0),

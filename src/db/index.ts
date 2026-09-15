@@ -28,11 +28,17 @@ sqlite.exec(`
     end_date TEXT,
     status TEXT NOT NULL DEFAULT 'aktivan',
     revenue REAL NOT NULL DEFAULT 0,
+    revenue_currency TEXT NOT NULL DEFAULT 'RSD',
     length_m REAL NOT NULL DEFAULT 0,
     width_m REAL NOT NULL DEFAULT 0,
     height_m REAL NOT NULL DEFAULT 0,
     roof_type TEXT NOT NULL DEFAULT 'dve_vode',
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
   );
 
   CREATE TABLE IF NOT EXISTS workers (
@@ -79,5 +85,12 @@ ensureColumn("projects", "length_m", "REAL NOT NULL DEFAULT 0");
 ensureColumn("projects", "width_m", "REAL NOT NULL DEFAULT 0");
 ensureColumn("projects", "height_m", "REAL NOT NULL DEFAULT 0");
 ensureColumn("projects", "roof_type", "TEXT NOT NULL DEFAULT 'dve_vode'");
+ensureColumn("projects", "revenue_currency", "TEXT NOT NULL DEFAULT 'RSD'");
+
+sqlite
+  .prepare(
+    `INSERT OR IGNORE INTO settings (key, value) VALUES ('eur_to_rsd', '117')`,
+  )
+  .run();
 
 export const db = drizzle(sqlite, { schema });

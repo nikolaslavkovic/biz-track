@@ -9,6 +9,7 @@ import {
   formatDimensions,
   formatHours,
   formatMoney,
+  formatSalePrice,
 } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +22,7 @@ export default async function HomePage() {
     recentWork,
     activeProjects,
     hallStats,
+    eurToRsd,
   } = await getDashboardData();
 
   const categoryLabel = (value: string) =>
@@ -77,7 +79,7 @@ export default async function HomePage() {
         <StatCard
           label="Ukupna prodajna cena"
           value={formatMoney(summary.revenue)}
-          hint="Sve hale / konstrukcije"
+          hint={`Sve u dinarima (kurs 1 EUR = ${eurToRsd} RSD)`}
           tone="accent"
         />
         <StatCard
@@ -158,7 +160,7 @@ export default async function HomePage() {
                     {p.client ? ` · ${p.client}` : ""}
                   </p>
                   <p className="text-sm text-[var(--accent)]">
-                    {formatMoney(p.revenue)}
+                    {formatSalePrice(p.revenue, p.revenueCurrency, eurToRsd)}
                   </p>
                 </li>
               ))}

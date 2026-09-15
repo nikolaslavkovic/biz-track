@@ -1,7 +1,30 @@
 import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { expenses, projects, workers, workLogs } from "@/db/schema";
-import { monthKey, weekStartISO, weekEndISO, formatWeekRange } from "@/lib/utils";
+import { expenses, projects, settings, workers, workLogs } from "@/db/schema";
+import {
+  formatWeekRange,
+  monthKey,
+  toRsd,
+  weekEndISO,
+  weekStartISO,
+} from "@/lib/utils";
+
+export async function getEurToRsdRate(): Promise<number> {
+  const row = await db
+    .select()
+    .from(settings)
+    .where(eq(settings.key, "eur_to_rsd"))
+    .limit(1);
+  const rate = Number(row[0]?.value);
+  return Number.isFinite(rate) && rate > 0 ? rate : 117;
+}
+
+export function projectRevenueRsd(
+  project: { revenue: number; revenueCurrency?: string | null },
+  eurToRsd: number,
+): number {
+  return toRsd(project.revenue, project.revenueCurrency ?? "RSD", eurToRsd);
+}
 
 export type Summary = {
   revenue: number;
@@ -20,6 +43,7 @@ export type Summary = {
 };
 
 export async function getSummary(from?: string, to?: string): Promise<Summary> {
+  const eurToRsd = await getEurToRsdRate();
   const expenseConds = [];
   const workConds = [];
 
@@ -47,9 +71,6 @@ export async function getSummary(from?: string, to?: string): Promise<Summary> {
     .innerJoin(workers, eq(workLogs.workerId, workers.id))
     .where(workConds.length ? and(...workConds) : undefined);
 
-  // Revenue: projects that overlap the period or have revenue recorded
-  // We count project revenue if project started before `to` and (no end or end after `from`)
-  // Simpler: sum revenue of projects whose startDate is in range OR completed in range
   let projectRows = await db.select().from(projects);
   if (from || to) {
     projectRows = projectRows.filter((p) => {
@@ -61,7 +82,10 @@ export async function getSummary(from?: string, to?: string): Promise<Summary> {
     });
   }
 
-  const revenue = projectRows.reduce((s, p) => s + (p.revenue || 0), 0);
+  const revenue = projectRows.reduce(
+    (s, p) => s + projectRevenueRsd(p, eurToRsd),
+    0,
+  );
 
   let materialCost = 0;
   let monthlyCost = 0;
@@ -117,6 +141,7 @@ export async function getSummary(from?: string, to?: string): Promise<Summary> {
 }
 
 export async function getMonthlySeries(monthsBack = 6) {
+  const eurToRsd = await getEurToRsdRate();
   const now = new Date();
   const keys: string[] = [];
   for (let i = monthsBack - 1; i >= 0; i--) {
@@ -164,7 +189,10 @@ export async function getMonthlySeries(monthsBack = 6) {
       .reduce((s, e) => s + e.amount, 0);
     const sati = monthWork.reduce((s, w) => s + w.hours, 0);
     const rad = monthWork.reduce((s, w) => s + w.hours * w.rate, 0);
-    const zarada = monthProjects.reduce((s, p) => s + (p.revenue || 0), 0);
+    const zarada = monthProjects.reduce(
+      (s, p) => s + projectRevenueRsd(p, eurToRsd),
+      0,
+    );
     const costs = plata > 0 ? troskovi : troskovi + rad;
 
     return {
@@ -197,6 +225,7 @@ export async function getDashboardData(from?: string, to?: string) {
     recentWork,
     activeProjects,
     hallStats,
+    eurToRsd,
   ] = await Promise.all([
     getSummary(from, to),
     getMonthlySeries(8),
@@ -219,6 +248,7 @@ export async function getDashboardData(from?: string, to?: string) {
       .where(eq(projects.status, "aktivan"))
       .orderBy(asc(projects.startDate)),
     getHallDimensionStats(),
+    getEurToRsdRate(),
   ]);
 
   return {
@@ -228,11 +258,13 @@ export async function getDashboardData(from?: string, to?: string) {
     recentWork,
     activeProjects,
     hallStats,
+    eurToRsd,
   };
 }
 
 /** Aggregate halls by width and by full dimension key for charts. */
 export async function getHallDimensionStats() {
+  const eurToRsd = await getEurToRsdRate();
   const rows = await db.select().from(projects);
   const byWidth = new Map<
     string,
@@ -254,6 +286,7 @@ export async function getHallDimensionStats() {
 
   for (const p of rows) {
     if (!p.widthM) continue;
+    const rev = projectRevenueRsd(p, eurToRsd);
     const widthKey = String(p.widthM);
     const widthRow = byWidth.get(widthKey) ?? {
       width: p.widthM,
@@ -262,7 +295,7 @@ export async function getHallDimensionStats() {
       revenue: 0,
     };
     widthRow.count += 1;
-    widthRow.revenue += p.revenue || 0;
+    widthRow.revenue += rev;
     byWidth.set(widthKey, widthRow);
 
     const sizeLabel = `${p.widthM}×${p.lengthM}×${p.heightM}`;
@@ -277,7 +310,7 @@ export async function getHallDimensionStats() {
       roofDve: 0,
     };
     sizeRow.count += 1;
-    sizeRow.revenue += p.revenue || 0;
+    sizeRow.revenue += rev;
     if (p.roofType === "jedna_voda") sizeRow.roofJedna += 1;
     else sizeRow.roofDve += 1;
     bySize.set(sizeLabel, sizeRow);

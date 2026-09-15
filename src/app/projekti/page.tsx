@@ -5,15 +5,17 @@ import { Field, Input, Select } from "@/components/ui/input";
 import {
   createProject,
   deleteProject,
+  updateEurRate,
   updateProject,
 } from "@/lib/actions";
-import { listProjects } from "@/lib/analytics";
+import { getEurToRsdRate, listProjects } from "@/lib/analytics";
 import {
   PROJECT_STATUSES,
   ROOF_TYPES,
+  SALE_CURRENCIES,
   formatDate,
   formatDimensions,
-  formatMoney,
+  formatSalePrice,
   roofLabel,
   todayISO,
 } from "@/lib/utils";
@@ -21,7 +23,10 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function ProjektiPage() {
-  const items = await listProjects();
+  const [items, eurToRsd] = await Promise.all([
+    listProjects(),
+    getEurToRsdRate(),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -30,10 +35,38 @@ export default async function ProjektiPage() {
           Projekti — čelične hale
         </h1>
         <p className="mt-1 text-[var(--muted)]">
-          Unesite dimenzije hale, tip krova, klijenta i ukupnu prodajnu cenu
-          konstrukcije.
+          Unesite dimenzije hale, tip krova, klijenta i ukupnu prodajnu cenu u
+          dinarima ili evrima (sve se sabira u dinarima).
         </p>
       </div>
+
+      <Card className="flex flex-wrap items-end gap-4">
+        <div className="min-w-[200px] flex-1">
+          <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold">
+            Kurs EUR → RSD
+          </h2>
+          <p className="text-sm text-[var(--muted)]">
+            Cene u evrima se množe ovim kursom za grafikone i neto obračun.
+          </p>
+        </div>
+        <form action={updateEurRate} className="flex flex-wrap items-end gap-2">
+          <Field label="1 EUR =">
+            <Input
+              name="eurToRsd"
+              type="number"
+              min="1"
+              step="0.01"
+              required
+              defaultValue={eurToRsd}
+              className="w-36"
+            />
+          </Field>
+          <span className="mb-2 text-sm text-[var(--muted)]">RSD</span>
+          <Button type="submit" variant="secondary">
+            Sačuvaj kurs
+          </Button>
+        </form>
+      </Card>
 
       <Card>
         <h2 className="mb-4 font-[family-name:var(--font-display)] text-lg font-semibold">
@@ -72,16 +105,26 @@ export default async function ProjektiPage() {
               ))}
             </Select>
           </Field>
-          <Field label="Ukupna prodajna cena (RSD)">
+          <Field label="Ukupna prodajna cena">
             <Input
               name="revenue"
               type="number"
               min="0"
-              step="1"
+              step="0.01"
               required
-              placeholder="npr. 1850000"
+              placeholder="npr. 15000"
             />
           </Field>
+          <Field label="Valuta cene">
+            <Select name="revenueCurrency" defaultValue="RSD">
+              {SALE_CURRENCIES.map((c) => (
+                <option key={c.value} value={c.value}>
+                  {c.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+
           <Field label="Status">
             <Select name="status" defaultValue="aktivan">
               {PROJECT_STATUSES.map((s) => (
@@ -91,14 +134,14 @@ export default async function ProjektiPage() {
               ))}
             </Select>
           </Field>
-
           <Field label="Početak">
             <Input name="startDate" type="date" required defaultValue={todayISO()} />
           </Field>
           <Field label="Završetak">
             <Input name="endDate" type="date" />
           </Field>
-          <Field label="Napomena">
+
+          <Field label="Napomena" className="sm:col-span-2 lg:col-span-3">
             <Input name="description" placeholder="Opciono" />
           </Field>
 
@@ -133,10 +176,10 @@ export default async function ProjektiPage() {
                     </p>
                     <p className="text-sm text-[var(--muted)]">
                       {p.client || "Bez klijenta"}
-                      {p.clientPhone ? ` · ${p.clientPhone}` : ""} ·{" "}
-                      <span className="font-medium text-[var(--accent)]">
-                        {formatMoney(p.revenue)}
-                      </span>
+                      {p.clientPhone ? ` · ${p.clientPhone}` : ""}
+                    </p>
+                    <p className="text-sm font-medium text-[var(--accent)]">
+                      {formatSalePrice(p.revenue, p.revenueCurrency, eurToRsd)}
                     </p>
                   </div>
                   <span
@@ -198,14 +241,26 @@ export default async function ProjektiPage() {
                       ))}
                     </Select>
                   </Field>
-                  <Field label="Ukupna prodajna cena (RSD)">
+                  <Field label="Ukupna prodajna cena">
                     <Input
                       name="revenue"
                       type="number"
                       min="0"
-                      step="1"
+                      step="0.01"
                       defaultValue={p.revenue}
                     />
+                  </Field>
+                  <Field label="Valuta">
+                    <Select
+                      name="revenueCurrency"
+                      defaultValue={p.revenueCurrency || "RSD"}
+                    >
+                      {SALE_CURRENCIES.map((c) => (
+                        <option key={c.value} value={c.value}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </Select>
                   </Field>
                   <Field label="Status">
                     <Select name="status" defaultValue={p.status}>
@@ -222,7 +277,7 @@ export default async function ProjektiPage() {
                   <Field label="Završetak">
                     <Input name="endDate" type="date" defaultValue={p.endDate ?? ""} />
                   </Field>
-                  <Field label="Napomena">
+                  <Field label="Napomena" className="sm:col-span-2 lg:col-span-3">
                     <Input name="description" defaultValue={p.description} />
                   </Field>
                 </div>
