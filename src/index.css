@@ -14,29 +14,29 @@
   --accent-2: #1d4e89;
   --good: #047857;
   --danger: #b91c1c;
-  --background: var(--bg);
-  --foreground: var(--ink);
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-body);
-  --font-display: var(--font-display);
+  --font-display: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Segoe UI", system-ui, sans-serif;
 }
 
 * {
   box-sizing: border-box;
 }
 
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
 body {
+  margin: 0;
   background:
     radial-gradient(1100px 480px at 8% -12%, rgba(15, 118, 110, 0.14), transparent 55%),
     radial-gradient(800px 360px at 100% 0%, rgba(29, 78, 137, 0.1), transparent 48%),
     linear-gradient(180deg, #f5f8fa 0%, var(--bg) 42%, #e4eaee 100%);
   color: var(--ink);
   font-family: var(--font-body), system-ui, sans-serif;
-  min-height: 100vh;
+  -webkit-tap-highlight-color: transparent;
 }
 
 ::selection {

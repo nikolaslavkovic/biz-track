@@ -1,11 +1,12 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import type { SaleCurrency } from "../db";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatMoney(value: number, currency = "RSD"): string {
+export function formatMoney(value: number, currency: SaleCurrency | "RSD" = "RSD"): string {
   return new Intl.NumberFormat("sr-RS", {
     style: "currency",
     currency,
@@ -13,20 +14,16 @@ export function formatMoney(value: number, currency = "RSD"): string {
   }).format(value || 0);
 }
 
-/** Convert sale price to dinars for totals/charts. */
 export function toRsd(
   amount: number,
   currency: string | null | undefined,
   eurToRsd: number,
 ): number {
   const value = Number(amount) || 0;
-  if ((currency || "RSD") === "EUR") {
-    return value * (eurToRsd || 0);
-  }
+  if ((currency || "RSD") === "EUR") return value * (eurToRsd || 0);
   return value;
 }
 
-/** Show entered price; if EUR, also show dinar equivalent. */
 export function formatSalePrice(
   amount: number,
   currency: string | null | undefined,
@@ -39,11 +36,6 @@ export function formatSalePrice(
   }
   return main;
 }
-
-export const SALE_CURRENCIES = [
-  { value: "RSD", label: "Dinari (RSD)" },
-  { value: "EUR", label: "Evri (EUR)" },
-] as const;
 
 export function formatHours(value: number): string {
   return `${Number(value || 0).toFixed(1)} h`;
@@ -68,13 +60,12 @@ export function monthKey(date: string): string {
   return date.slice(0, 7);
 }
 
-/** Monday of the ISO week containing `date` (YYYY-MM-DD). */
 export function weekStartISO(date: string | Date = new Date()): string {
   const d =
     typeof date === "string"
       ? new Date(date + (date.length === 10 ? "T12:00:00" : ""))
       : new Date(date);
-  const day = d.getDay(); // 0 Sun … 6 Sat
+  const day = d.getDay();
   const diff = day === 0 ? -6 : 1 - day;
   d.setDate(d.getDate() + diff);
   return d.toISOString().slice(0, 10);
@@ -86,7 +77,6 @@ export function weekEndISO(weekStart: string): string {
   return d.toISOString().slice(0, 10);
 }
 
-/** HTML week input value, e.g. 2026-W38 */
 export function toWeekInputValue(date: string | Date = new Date()): string {
   const start = weekStartISO(date);
   const d = new Date(start + "T12:00:00");
@@ -95,11 +85,11 @@ export function toWeekInputValue(date: string | Date = new Date()): string {
   const startOfYearWeek = weekStartISO(jan4.toISOString().slice(0, 10));
   const startMs = new Date(start + "T12:00:00").getTime();
   const yearStartMs = new Date(startOfYearWeek + "T12:00:00").getTime();
-  const weekNum = Math.floor((startMs - yearStartMs) / (7 * 24 * 3600 * 1000)) + 1;
+  const weekNum =
+    Math.floor((startMs - yearStartMs) / (7 * 24 * 3600 * 1000)) + 1;
   return `${year}-W${String(weekNum).padStart(2, "0")}`;
 }
 
-/** Parse HTML week value (2026-W38) → Monday YYYY-MM-DD */
 export function fromWeekInputValue(weekValue: string): string {
   const match = /^(\d{4})-W(\d{2})$/.exec(weekValue.trim());
   if (!match) return weekStartISO();
@@ -113,12 +103,16 @@ export function fromWeekInputValue(weekValue: string): string {
 }
 
 export function formatWeekRange(weekStart: string): string {
-  const end = weekEndISO(weekStart);
-  return `${formatDate(weekStart)} – ${formatDate(end)}`;
+  return `${formatDate(weekStart)} – ${formatDate(weekEndISO(weekStart))}`;
 }
 
-export function weekKey(date: string): string {
-  return weekStartISO(date);
+export function formatDimensions(
+  lengthM: number,
+  widthM: number,
+  heightM: number,
+): string {
+  if (!lengthM && !widthM && !heightM) return "—";
+  return `${widthM || "?"} × ${lengthM || "?"} × ${heightM || "?"} m`;
 }
 
 export const EXPENSE_CATEGORIES = [
@@ -158,14 +152,10 @@ export const ROOF_TYPES = [
   { value: "dve_vode", label: "Krov na dve vode" },
 ] as const;
 
-export function formatDimensions(
-  lengthM: number,
-  widthM: number,
-  heightM: number,
-): string {
-  if (!lengthM && !widthM && !heightM) return "—";
-  return `${widthM || "?"} × ${lengthM || "?"} × ${heightM || "?"} m`;
-}
+export const SALE_CURRENCIES = [
+  { value: "RSD", label: "Dinari (RSD)" },
+  { value: "EUR", label: "Evri (EUR)" },
+] as const;
 
 export function roofLabel(value: string | null | undefined): string {
   return ROOF_TYPES.find((r) => r.value === value)?.label ?? value ?? "—";
