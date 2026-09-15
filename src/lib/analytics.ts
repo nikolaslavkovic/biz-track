@@ -22,7 +22,6 @@ export type Summary = {
 export async function getSummary(from?: string, to?: string): Promise<Summary> {
   const expenseConds = [];
   const workConds = [];
-  const projectConds = [];
 
   if (from) {
     expenseConds.push(gte(expenses.date, from));
@@ -85,12 +84,8 @@ export async function getSummary(from?: string, to?: string): Promise<Summary> {
     laborFromLogs += w.hours * w.rate;
   }
 
-  // Avoid double-counting: if plata expenses exist, use those for labor cost;
-  // otherwise use calculated labor from work logs.
-  const laborCost =
-    payrollExpenses > 0 ? payrollExpenses : laborFromLogs;
-  const costsWithoutPayroll =
-    materialCost + monthlyCost + otherCost;
+  // Prefer explicit payroll expenses if present; otherwise use hours × rate.
+  const costsWithoutPayroll = materialCost + monthlyCost + otherCost;
   const totalCosts =
     payrollExpenses > 0
       ? expensesTotal
@@ -170,8 +165,6 @@ export async function getMonthlySeries(monthsBack = 6) {
     const sati = monthWork.reduce((s, w) => s + w.hours, 0);
     const rad = monthWork.reduce((s, w) => s + w.hours * w.rate, 0);
     const zarada = monthProjects.reduce((s, p) => s + (p.revenue || 0), 0);
-    const ukupniTroskovi = plata > 0 ? troskovi : troskovi - plata + rad + (plata || 0);
-    // cleaner: if no plata expense, add calculated labor
     const costs = plata > 0 ? troskovi : troskovi + rad;
 
     return {
