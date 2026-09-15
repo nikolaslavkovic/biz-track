@@ -202,11 +202,9 @@ export async function getDashboardData(from?: string, to?: string) {
           hours: workLogs.hours,
           note: workLogs.note,
           workerName: workers.name,
-          projectName: projects.name,
         })
         .from(workLogs)
         .innerJoin(workers, eq(workLogs.workerId, workers.id))
-        .leftJoin(projects, eq(workLogs.projectId, projects.id))
         .orderBy(desc(workLogs.date))
         .limit(8),
       db
@@ -252,15 +250,12 @@ export async function listWorkLogs() {
       hours: workLogs.hours,
       note: workLogs.note,
       workerId: workLogs.workerId,
-      projectId: workLogs.projectId,
       workerName: workers.name,
       hourlyRate: workers.hourlyRate,
-      projectName: projects.name,
       cost: sql<number>`${workLogs.hours} * ${workers.hourlyRate}`.as("cost"),
     })
     .from(workLogs)
     .innerJoin(workers, eq(workLogs.workerId, workers.id))
-    .leftJoin(projects, eq(workLogs.projectId, projects.id))
     .orderBy(desc(workLogs.date));
 }
 

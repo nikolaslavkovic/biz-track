@@ -11,7 +11,6 @@ import {
 } from "@/lib/actions";
 import {
   getWeeklyPayroll,
-  listProjects,
   listWorkLogs,
   listWorkers,
 } from "@/lib/analytics";
@@ -27,10 +26,9 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function RadniciPage() {
-  const [workerList, logs, projectList, weekly] = await Promise.all([
+  const [workerList, logs, weekly] = await Promise.all([
     listWorkers(),
     listWorkLogs(),
-    listProjects(),
     getWeeklyPayroll(),
   ]);
 
@@ -103,6 +101,7 @@ export default async function RadniciPage() {
           </h2>
           <p className="mb-4 text-sm text-[var(--muted)]">
             Izaberite nedelju (pon–ned), upišite sate pored svakog radnika i sačuvajte.
+            Svi rade na svim projektima — sati se vode samo po radniku.
           </p>
           {activeWorkers.length === 0 ? (
             <p className="text-sm text-[var(--muted)]">
@@ -110,26 +109,14 @@ export default async function RadniciPage() {
             </p>
           ) : (
             <form action={createWeeklyWorkLogs} className="space-y-4">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Radna nedelja">
-                  <Input
-                    name="week"
-                    type="week"
-                    required
-                    defaultValue={toWeekInputValue()}
-                  />
-                </Field>
-                <Field label="Projekat (opciono, za sve)">
-                  <Select name="projectId" defaultValue="">
-                    <option value="">— bez projekta / mešano —</option>
-                    {projectList.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
-              </div>
+              <Field label="Radna nedelja">
+                <Input
+                  name="week"
+                  type="week"
+                  required
+                  defaultValue={toWeekInputValue()}
+                />
+              </Field>
 
               <div className="overflow-x-auto rounded-lg border border-[var(--line)]">
                 <table className="w-full min-w-[420px] text-left text-sm">
@@ -328,7 +315,6 @@ export default async function RadniciPage() {
                     <span className="font-medium">{formatWeekRange(weekStartISO(l.date))}</span>
                     <span className="mt-0.5 block text-xs text-[var(--muted)]">
                       {formatDate(l.date)}
-                      {l.projectName ? ` · ${l.projectName}` : ""}
                     </span>
                   </td>
                   <td className="px-4 py-3 font-medium">{l.workerName}</td>

@@ -94,12 +94,9 @@ export async function createWorkLog(formData: FormData) {
   const hours = Number(formData.get("hours"));
   if (!workerId || !hours) throw new Error("Radnik i sati su obavezni");
 
-  const projectIdRaw = formData.get("projectId");
-  const projectId = projectIdRaw ? Number(projectIdRaw) : null;
-
   await db.insert(workLogs).values({
     workerId,
-    projectId: projectId || null,
+    projectId: null,
     date: String(formData.get("date") || new Date().toISOString().slice(0, 10)),
     hours,
     note: String(formData.get("note") || "").trim(),
@@ -112,13 +109,11 @@ export async function createWeeklyWorkLogs(formData: FormData) {
   const weekValue = String(formData.get("week") || "");
   const weekStart = fromWeekInputValue(weekValue);
   const label = formatWeekRange(weekStart);
-  const projectIdRaw = formData.get("projectId");
-  const projectId = projectIdRaw ? Number(projectIdRaw) : null;
   const noteExtra = String(formData.get("note") || "").trim();
 
   const rows: Array<{
     workerId: number;
-    projectId: number | null;
+    projectId: null;
     date: string;
     hours: number;
     note: string;
@@ -131,7 +126,7 @@ export async function createWeeklyWorkLogs(formData: FormData) {
     if (!workerId || !hours || hours <= 0) continue;
     rows.push({
       workerId,
-      projectId: projectId || null,
+      projectId: null,
       date: weekStart,
       hours,
       note: noteExtra

@@ -69,19 +69,19 @@ export async function seedIfEmpty() {
     .returning();
 
   const workEntries = [
-    { workerId: w1.id, projectId: p1.id, date: monthsAgo(3, 5), hours: 8 },
-    { workerId: w2.id, projectId: p1.id, date: monthsAgo(3, 5), hours: 8 },
-    { workerId: w1.id, projectId: p1.id, date: monthsAgo(2, 12), hours: 7.5 },
-    { workerId: w3.id, projectId: p1.id, date: monthsAgo(2, 14), hours: 8 },
-    { workerId: w1.id, projectId: p2.id, date: monthsAgo(1, 10), hours: 8 },
-    { workerId: w2.id, projectId: p2.id, date: monthsAgo(1, 11), hours: 6 },
-    { workerId: w3.id, projectId: p2.id, date: monthsAgo(0, 4), hours: 8 },
-    { workerId: w1.id, projectId: p3.id, date: monthsAgo(0, 5), hours: 5 },
-    { workerId: w2.id, projectId: p3.id, date: monthsAgo(0, 6), hours: 8 },
+    { workerId: w1.id, date: monthsAgo(3, 5), hours: 8 },
+    { workerId: w2.id, date: monthsAgo(3, 5), hours: 8 },
+    { workerId: w1.id, date: monthsAgo(2, 12), hours: 7.5 },
+    { workerId: w3.id, date: monthsAgo(2, 14), hours: 8 },
+    { workerId: w1.id, date: monthsAgo(1, 10), hours: 8 },
+    { workerId: w2.id, date: monthsAgo(1, 11), hours: 6 },
+    { workerId: w3.id, date: monthsAgo(0, 4), hours: 8 },
+    { workerId: w1.id, date: monthsAgo(0, 5), hours: 5 },
+    { workerId: w2.id, date: monthsAgo(0, 6), hours: 8 },
   ];
 
   await db.insert(workLogs).values(
-    workEntries.map((e) => ({ ...e, note: "" })),
+    workEntries.map((e) => ({ ...e, projectId: null, note: "" })),
   );
 
   await db.insert(expenses).values([

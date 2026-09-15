@@ -202,7 +202,6 @@ export default async function HomePage() {
                     <p className="font-medium">{w.workerName}</p>
                     <p className="text-xs text-[var(--muted)]">
                       {formatDate(w.date)}
-                      {w.projectName ? ` · ${w.projectName}` : ""}
                     </p>
                   </div>
                   <p className="shrink-0 font-semibold">{formatHours(w.hours)}</p>
