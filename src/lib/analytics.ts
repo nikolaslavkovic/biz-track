@@ -190,31 +190,105 @@ function formatMonthLabel(key: string) {
 }
 
 export async function getDashboardData(from?: string, to?: string) {
-  const [summary, series, recentExpenses, recentWork, activeProjects] =
-    await Promise.all([
-      getSummary(from, to),
-      getMonthlySeries(8),
-      db.select().from(expenses).orderBy(desc(expenses.date)).limit(8),
-      db
-        .select({
-          id: workLogs.id,
-          date: workLogs.date,
-          hours: workLogs.hours,
-          note: workLogs.note,
-          workerName: workers.name,
-        })
-        .from(workLogs)
-        .innerJoin(workers, eq(workLogs.workerId, workers.id))
-        .orderBy(desc(workLogs.date))
-        .limit(8),
-      db
-        .select()
-        .from(projects)
-        .where(eq(projects.status, "aktivan"))
-        .orderBy(asc(projects.startDate)),
-    ]);
+  const [
+    summary,
+    series,
+    recentExpenses,
+    recentWork,
+    activeProjects,
+    hallStats,
+  ] = await Promise.all([
+    getSummary(from, to),
+    getMonthlySeries(8),
+    db.select().from(expenses).orderBy(desc(expenses.date)).limit(8),
+    db
+      .select({
+        id: workLogs.id,
+        date: workLogs.date,
+        hours: workLogs.hours,
+        note: workLogs.note,
+        workerName: workers.name,
+      })
+      .from(workLogs)
+      .innerJoin(workers, eq(workLogs.workerId, workers.id))
+      .orderBy(desc(workLogs.date))
+      .limit(8),
+    db
+      .select()
+      .from(projects)
+      .where(eq(projects.status, "aktivan"))
+      .orderBy(asc(projects.startDate)),
+    getHallDimensionStats(),
+  ]);
 
-  return { summary, series, recentExpenses, recentWork, activeProjects };
+  return {
+    summary,
+    series,
+    recentExpenses,
+    recentWork,
+    activeProjects,
+    hallStats,
+  };
+}
+
+/** Aggregate halls by width and by full dimension key for charts. */
+export async function getHallDimensionStats() {
+  const rows = await db.select().from(projects);
+  const byWidth = new Map<
+    string,
+    { width: number; label: string; count: number; revenue: number }
+  >();
+  const bySize = new Map<
+    string,
+    {
+      label: string;
+      width: number;
+      length: number;
+      height: number;
+      count: number;
+      revenue: number;
+      roofJedna: number;
+      roofDve: number;
+    }
+  >();
+
+  for (const p of rows) {
+    if (!p.widthM) continue;
+    const widthKey = String(p.widthM);
+    const widthRow = byWidth.get(widthKey) ?? {
+      width: p.widthM,
+      label: `${p.widthM} m`,
+      count: 0,
+      revenue: 0,
+    };
+    widthRow.count += 1;
+    widthRow.revenue += p.revenue || 0;
+    byWidth.set(widthKey, widthRow);
+
+    const sizeLabel = `${p.widthM}×${p.lengthM}×${p.heightM}`;
+    const sizeRow = bySize.get(sizeLabel) ?? {
+      label: sizeLabel,
+      width: p.widthM,
+      length: p.lengthM,
+      height: p.heightM,
+      count: 0,
+      revenue: 0,
+      roofJedna: 0,
+      roofDve: 0,
+    };
+    sizeRow.count += 1;
+    sizeRow.revenue += p.revenue || 0;
+    if (p.roofType === "jedna_voda") sizeRow.roofJedna += 1;
+    else sizeRow.roofDve += 1;
+    bySize.set(sizeLabel, sizeRow);
+  }
+
+  return {
+    byWidth: [...byWidth.values()].sort((a, b) => a.width - b.width),
+    bySize: [...bySize.values()]
+      .sort((a, b) => b.count - a.count || b.revenue - a.revenue)
+      .slice(0, 12),
+  };
 }
 
 export async function listProjects() {

@@ -20,6 +20,7 @@ export async function createProject(formData: FormData) {
   await db.insert(projects).values({
     name,
     client: String(formData.get("client") || "").trim(),
+    clientPhone: String(formData.get("clientPhone") || "").trim(),
     description: String(formData.get("description") || "").trim(),
     startDate: String(formData.get("startDate") || new Date().toISOString().slice(0, 10)),
     endDate: String(formData.get("endDate") || "") || null,
@@ -28,6 +29,12 @@ export async function createProject(formData: FormData) {
       | "zavrsen"
       | "pauziran"),
     revenue: Number(formData.get("revenue") || 0),
+    lengthM: Number(formData.get("lengthM") || 0),
+    widthM: Number(formData.get("widthM") || 0),
+    heightM: Number(formData.get("heightM") || 0),
+    roofType: (String(formData.get("roofType") || "dve_vode") as
+      | "jedna_voda"
+      | "dve_vode"),
   });
   revalidateAll();
 }
@@ -41,6 +48,7 @@ export async function updateProject(formData: FormData) {
     .set({
       name: String(formData.get("name") || "").trim(),
       client: String(formData.get("client") || "").trim(),
+      clientPhone: String(formData.get("clientPhone") || "").trim(),
       description: String(formData.get("description") || "").trim(),
       startDate: String(formData.get("startDate")),
       endDate: String(formData.get("endDate") || "") || null,
@@ -49,6 +57,12 @@ export async function updateProject(formData: FormData) {
         | "zavrsen"
         | "pauziran",
       revenue: Number(formData.get("revenue") || 0),
+      lengthM: Number(formData.get("lengthM") || 0),
+      widthM: Number(formData.get("widthM") || 0),
+      heightM: Number(formData.get("heightM") || 0),
+      roofType: String(formData.get("roofType") || "dve_vode") as
+        | "jedna_voda"
+        | "dve_vode",
     })
     .where(eq(projects.id, id));
   revalidateAll();

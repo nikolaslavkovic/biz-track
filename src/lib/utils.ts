@@ -120,3 +120,21 @@ export const PROJECT_STATUSES = [
   { value: "zavrsen", label: "Završen" },
   { value: "pauziran", label: "Pauziran" },
 ] as const;
+
+export const ROOF_TYPES = [
+  { value: "jedna_voda", label: "Krov na jednu vodu" },
+  { value: "dve_vode", label: "Krov na dve vode" },
+] as const;
+
+export function formatDimensions(
+  lengthM: number,
+  widthM: number,
+  heightM: number,
+): string {
+  if (!lengthM && !widthM && !heightM) return "—";
+  return `${widthM || "?"} × ${lengthM || "?"} × ${heightM || "?"} m`;
+}
+
+export function roofLabel(value: string | null | undefined): string {
+  return ROOF_TYPES.find((r) => r.value === value)?.label ?? value ?? "—";
+}

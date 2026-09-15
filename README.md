@@ -4,10 +4,10 @@ Web aplikacija za praćenje **troškova, radnih sati, materijala i zarade** u fi
 
 ## Šta radi
 
-- **Projekti** — naziv, klijent, početak/završetak, status, prihod
+- **Projekti** — čelične hale: dimenzije (Š×D×V), krov (jedna/dve vode), klijent + telefon, ukupna prodajna cena
 - **Troškovi** — dnevni materijal (cevi, farba, žica…), mesečni (struja, porez…), plate, ostalo
 - **Radnici i sati** — satnica radnika + **nedeljni unos sati** (isplata na kraju nedelje) + pregled po nedeljama
-- **Pregled** — ukupna zarada, troškovi, neto, **neto zarada po satu**, grafikoni kroz mesece
+- **Pregled** — zarada/troškovi/neto, grafikoni kroz vreme + **hale po širini i dimenzijama**
 - Podaci se čuvaju u lokalnoj **SQLite** bazi (`data/firma.db`) — ostaju nedeljama i mesecima
 
 ## Pokretanje

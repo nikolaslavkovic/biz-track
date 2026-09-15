@@ -7,7 +7,44 @@ export async function seedIfEmpty() {
     .select({ count: sql<number>`count(*)` })
     .from(projects);
 
-  if (Number(count) > 0) return;
+  if (Number(count) > 0) {
+    // Backfill demo dimensions on existing seed projects if still empty
+    await db
+      .update(projects)
+      .set({
+        lengthM: 24,
+        widthM: 12,
+        heightM: 5,
+        roofType: "dve_vode",
+        clientPhone: "060 111 2233",
+      })
+      .where(sql`${projects.widthM} = 0 AND ${projects.name} LIKE '%Petrović%'`);
+    await db
+      .update(projects)
+      .set({
+        lengthM: 30,
+        widthM: 15,
+        heightM: 6,
+        roofType: "dve_vode",
+        clientPhone: "011 200 300",
+        name: "Hala Centar – čelična konstrukcija",
+        description: "Čelična hala sa krovom na dve vode",
+      })
+      .where(sql`${projects.widthM} = 0 AND ${projects.name} LIKE '%Centar%'`);
+    await db
+      .update(projects)
+      .set({
+        lengthM: 18,
+        widthM: 10,
+        heightM: 4.5,
+        roofType: "jedna_voda",
+        clientPhone: "064 555 7788",
+        name: "Hala Nikolić",
+        description: "Manja čelična hala, krov na jednu vodu",
+      })
+      .where(sql`${projects.widthM} = 0 AND ${projects.name} LIKE '%Vračaru%'`);
+    return;
+  }
 
   const today = new Date();
   const iso = (d: Date) => d.toISOString().slice(0, 10);
@@ -19,41 +56,102 @@ export async function seedIfEmpty() {
   const [p1] = await db
     .insert(projects)
     .values({
-      name: "Kuća Petrović – instalacije",
+      name: "Hala Petrović",
       client: "Marko Petrović",
-      description: "Vodovod i grejanje u novoj kući",
+      clientPhone: "060 111 2233",
+      description: "Čelična konstrukcija, krov na dve vode",
       startDate: monthsAgo(3, 2),
       endDate: monthsAgo(1, 20),
       status: "zavrsen",
-      revenue: 480000,
+      revenue: 1850000,
+      lengthM: 24,
+      widthM: 12,
+      heightM: 5,
+      roofType: "dve_vode",
     })
     .returning();
 
   const [p2] = await db
     .insert(projects)
     .values({
-      name: "Lokal Centar – renoviranje",
+      name: "Hala Centar",
       client: "Centar d.o.o.",
-      description: "Cevi, farba i električne instalacije",
+      clientPhone: "011 200 300",
+      description: "Veća čelična hala",
       startDate: monthsAgo(1, 8),
       endDate: null,
       status: "aktivan",
-      revenue: 210000,
+      revenue: 3200000,
+      lengthM: 30,
+      widthM: 15,
+      heightM: 6,
+      roofType: "dve_vode",
     })
     .returning();
 
   const [p3] = await db
     .insert(projects)
     .values({
-      name: "Stan na Vračaru",
+      name: "Hala Nikolić",
       client: "Jelena Nikolić",
-      description: "Zamena instalacija u kupatilu",
+      clientPhone: "064 555 7788",
+      description: "Manja hala, krov na jednu vodu",
       startDate: monthsAgo(0, 3),
       endDate: null,
       status: "aktivan",
-      revenue: 95000,
+      revenue: 980000,
+      lengthM: 18,
+      widthM: 10,
+      heightM: 4.5,
+      roofType: "jedna_voda",
     })
     .returning();
+
+  // Extra halls for width chart variety
+  await db.insert(projects).values([
+    {
+      name: "Hala Jovanović",
+      client: "Petar Jovanović",
+      clientPhone: "063 100 200",
+      description: "",
+      startDate: monthsAgo(2, 10),
+      endDate: monthsAgo(1, 5),
+      status: "zavrsen",
+      revenue: 1400000,
+      lengthM: 20,
+      widthM: 12,
+      heightM: 5,
+      roofType: "dve_vode",
+    },
+    {
+      name: "Hala Stojanović",
+      client: "Ana Stojanović",
+      clientPhone: "065 300 400",
+      description: "",
+      startDate: monthsAgo(4, 1),
+      endDate: monthsAgo(3, 15),
+      status: "zavrsen",
+      revenue: 1100000,
+      lengthM: 16,
+      widthM: 10,
+      heightM: 4,
+      roofType: "jedna_voda",
+    },
+    {
+      name: "Hala Milić",
+      client: "Igor Milić",
+      clientPhone: "061 700 800",
+      description: "",
+      startDate: monthsAgo(5, 8),
+      endDate: monthsAgo(4, 20),
+      status: "zavrsen",
+      revenue: 2100000,
+      lengthM: 28,
+      widthM: 15,
+      heightM: 5.5,
+      roofType: "dve_vode",
+    },
+  ]);
 
   const [w1] = await db
     .insert(workers)
@@ -69,19 +167,23 @@ export async function seedIfEmpty() {
     .returning();
 
   const workEntries = [
-    { workerId: w1.id, date: monthsAgo(3, 5), hours: 8 },
-    { workerId: w2.id, date: monthsAgo(3, 5), hours: 8 },
-    { workerId: w1.id, date: monthsAgo(2, 12), hours: 7.5 },
-    { workerId: w3.id, date: monthsAgo(2, 14), hours: 8 },
-    { workerId: w1.id, date: monthsAgo(1, 10), hours: 8 },
-    { workerId: w2.id, date: monthsAgo(1, 11), hours: 6 },
-    { workerId: w3.id, date: monthsAgo(0, 4), hours: 8 },
-    { workerId: w1.id, date: monthsAgo(0, 5), hours: 5 },
-    { workerId: w2.id, date: monthsAgo(0, 6), hours: 8 },
+    { workerId: w1.id, date: monthsAgo(3, 5), hours: 40 },
+    { workerId: w2.id, date: monthsAgo(3, 5), hours: 40 },
+    { workerId: w1.id, date: monthsAgo(2, 12), hours: 38 },
+    { workerId: w3.id, date: monthsAgo(2, 14), hours: 40 },
+    { workerId: w1.id, date: monthsAgo(1, 10), hours: 42 },
+    { workerId: w2.id, date: monthsAgo(1, 11), hours: 35 },
+    { workerId: w3.id, date: monthsAgo(0, 4), hours: 40 },
+    { workerId: w1.id, date: monthsAgo(0, 5), hours: 30 },
+    { workerId: w2.id, date: monthsAgo(0, 6), hours: 40 },
   ];
 
   await db.insert(workLogs).values(
-    workEntries.map((e) => ({ ...e, projectId: null, note: "" })),
+    workEntries.map((e) => ({
+      ...e,
+      projectId: null,
+      note: `Nedelja`,
+    })),
   );
 
   await db.insert(expenses).values([
@@ -89,8 +191,8 @@ export async function seedIfEmpty() {
       date: monthsAgo(3, 4),
       category: "materijal",
       subcategory: "Cevi",
-      description: "PVC i bakarne cevi",
-      amount: 62000,
+      description: "Čelični profili",
+      amount: 320000,
       projectId: p1.id,
     },
     {
@@ -98,7 +200,7 @@ export async function seedIfEmpty() {
       category: "materijal",
       subcategory: "Farba",
       description: "Antikorozivna farba",
-      amount: 18000,
+      amount: 48000,
       projectId: p1.id,
     },
     {
@@ -121,7 +223,7 @@ export async function seedIfEmpty() {
       date: monthsAgo(1, 9),
       category: "materijal",
       subcategory: "Žica",
-      description: "Elektro žica 2.5mm",
+      description: "Elektro žica",
       amount: 22000,
       projectId: p2.id,
     },
@@ -129,8 +231,8 @@ export async function seedIfEmpty() {
       date: monthsAgo(1, 12),
       category: "materijal",
       subcategory: "Cevi",
-      description: "Pex cevi",
-      amount: 31000,
+      description: "Profili i lim",
+      amount: 410000,
       projectId: p2.id,
     },
     {
@@ -145,8 +247,8 @@ export async function seedIfEmpty() {
       date: monthsAgo(0, 3),
       category: "materijal",
       subcategory: "Fittings",
-      description: "Spojnice i ventili",
-      amount: 9800,
+      description: "Spojnice i vijci",
+      amount: 28000,
       projectId: p3.id,
     },
     {

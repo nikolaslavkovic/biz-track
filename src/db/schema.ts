@@ -5,6 +5,7 @@ export const projects = sqliteTable("projects", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
   client: text("client").notNull().default(""),
+  clientPhone: text("client_phone").notNull().default(""),
   description: text("description").notNull().default(""),
   startDate: text("start_date").notNull(),
   endDate: text("end_date"),
@@ -13,7 +14,16 @@ export const projects = sqliteTable("projects", {
   })
     .notNull()
     .default("aktivan"),
+  /** Ukupna prodajna cena cele konstrukcije */
   revenue: real("revenue").notNull().default(0),
+  lengthM: real("length_m").notNull().default(0),
+  widthM: real("width_m").notNull().default(0),
+  heightM: real("height_m").notNull().default(0),
+  roofType: text("roof_type", {
+    enum: ["jedna_voda", "dve_vode"],
+  })
+    .notNull()
+    .default("dve_vode"),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(datetime('now'))`),

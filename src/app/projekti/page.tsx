@@ -1,7 +1,7 @@
 import { DeleteButton } from "@/components/form-buttons";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Field, Input, Select, Textarea } from "@/components/ui/input";
+import { Field, Input, Select } from "@/components/ui/input";
 import {
   createProject,
   deleteProject,
@@ -10,8 +10,11 @@ import {
 import { listProjects } from "@/lib/analytics";
 import {
   PROJECT_STATUSES,
+  ROOF_TYPES,
   formatDate,
+  formatDimensions,
   formatMoney,
+  roofLabel,
   todayISO,
 } from "@/lib/utils";
 
@@ -24,23 +27,60 @@ export default async function ProjektiPage() {
     <div className="space-y-6">
       <div>
         <h1 className="font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight">
-          Projekti
+          Projekti — čelične hale
         </h1>
         <p className="mt-1 text-[var(--muted)]">
-          Unesite projekte koje radite, početak, završetak i zaradu sa projekta.
+          Unesite dimenzije hale, tip krova, klijenta i ukupnu prodajnu cenu
+          konstrukcije.
         </p>
       </div>
 
       <Card>
         <h2 className="mb-4 font-[family-name:var(--font-display)] text-lg font-semibold">
-          Novi projekat
+          Nova hala / projekat
         </h2>
-        <form action={createProject} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label="Naziv">
-            <Input name="name" required placeholder="npr. Kuća Petrović" />
+        <form
+          action={createProject}
+          className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+        >
+          <Field label="Naziv hale / projekta">
+            <Input name="name" required placeholder="npr. Hala Petrović" />
           </Field>
-          <Field label="Klijent">
-            <Input name="client" placeholder="Ime klijenta" />
+          <Field label="Ime klijenta">
+            <Input name="client" required placeholder="Ime i prezime" />
+          </Field>
+          <Field label="Telefon klijenta">
+            <Input name="clientPhone" placeholder="06x xxx xxxx" />
+          </Field>
+
+          <Field label="Širina (m)">
+            <Input name="widthM" type="number" min="0" step="0.1" required placeholder="12" />
+          </Field>
+          <Field label="Dužina (m)">
+            <Input name="lengthM" type="number" min="0" step="0.1" required placeholder="24" />
+          </Field>
+          <Field label="Visina (m)">
+            <Input name="heightM" type="number" min="0" step="0.1" required placeholder="5" />
+          </Field>
+
+          <Field label="Tip krova">
+            <Select name="roofType" defaultValue="dve_vode">
+              {ROOF_TYPES.map((r) => (
+                <option key={r.value} value={r.value}>
+                  {r.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Ukupna prodajna cena (RSD)">
+            <Input
+              name="revenue"
+              type="number"
+              min="0"
+              step="1"
+              required
+              placeholder="npr. 1850000"
+            />
           </Field>
           <Field label="Status">
             <Select name="status" defaultValue="aktivan">
@@ -51,18 +91,17 @@ export default async function ProjektiPage() {
               ))}
             </Select>
           </Field>
+
           <Field label="Početak">
             <Input name="startDate" type="date" required defaultValue={todayISO()} />
           </Field>
           <Field label="Završetak">
             <Input name="endDate" type="date" />
           </Field>
-          <Field label="Zarada / prihod (RSD)">
-            <Input name="revenue" type="number" min="0" step="1" defaultValue="0" />
+          <Field label="Napomena">
+            <Input name="description" placeholder="Opciono" />
           </Field>
-          <Field label="Opis" className="sm:col-span-2 lg:col-span-3">
-            <Textarea name="description" placeholder="Šta se radi na projektu..." />
-          </Field>
+
           <div className="sm:col-span-2 lg:col-span-3">
             <Button type="submit">Sačuvaj projekat</Button>
           </div>
@@ -72,7 +111,7 @@ export default async function ProjektiPage() {
       <div className="space-y-4">
         {items.length === 0 ? (
           <Card>
-            <p className="text-[var(--muted)]">Još nema projekata. Unesite prvi iznad.</p>
+            <p className="text-[var(--muted)]">Još nema projekata. Unesite prvu halu iznad.</p>
           </Card>
         ) : (
           items.map((p) => (
@@ -89,7 +128,15 @@ export default async function ProjektiPage() {
                       {p.name}
                     </h3>
                     <p className="text-sm text-[var(--muted)]">
-                      {p.client || "Bez klijenta"} · trenutno {formatMoney(p.revenue)}
+                      {formatDimensions(p.lengthM, p.widthM, p.heightM)} ·{" "}
+                      {roofLabel(p.roofType)}
+                    </p>
+                    <p className="text-sm text-[var(--muted)]">
+                      {p.client || "Bez klijenta"}
+                      {p.clientPhone ? ` · ${p.clientPhone}` : ""} ·{" "}
+                      <span className="font-medium text-[var(--accent)]">
+                        {formatMoney(p.revenue)}
+                      </span>
                     </p>
                   </div>
                   <span
@@ -109,8 +156,56 @@ export default async function ProjektiPage() {
                   <Field label="Naziv">
                     <Input name="name" defaultValue={p.name} required />
                   </Field>
-                  <Field label="Klijent">
+                  <Field label="Ime klijenta">
                     <Input name="client" defaultValue={p.client} />
+                  </Field>
+                  <Field label="Telefon">
+                    <Input name="clientPhone" defaultValue={p.clientPhone} />
+                  </Field>
+                  <Field label="Širina (m)">
+                    <Input
+                      name="widthM"
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      defaultValue={p.widthM}
+                    />
+                  </Field>
+                  <Field label="Dužina (m)">
+                    <Input
+                      name="lengthM"
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      defaultValue={p.lengthM}
+                    />
+                  </Field>
+                  <Field label="Visina (m)">
+                    <Input
+                      name="heightM"
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      defaultValue={p.heightM}
+                    />
+                  </Field>
+                  <Field label="Tip krova">
+                    <Select name="roofType" defaultValue={p.roofType}>
+                      {ROOF_TYPES.map((r) => (
+                        <option key={r.value} value={r.value}>
+                          {r.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <Field label="Ukupna prodajna cena (RSD)">
+                    <Input
+                      name="revenue"
+                      type="number"
+                      min="0"
+                      step="1"
+                      defaultValue={p.revenue}
+                    />
                   </Field>
                   <Field label="Status">
                     <Select name="status" defaultValue={p.status}>
@@ -127,17 +222,8 @@ export default async function ProjektiPage() {
                   <Field label="Završetak">
                     <Input name="endDate" type="date" defaultValue={p.endDate ?? ""} />
                   </Field>
-                  <Field label="Zarada (RSD)">
-                    <Input
-                      name="revenue"
-                      type="number"
-                      min="0"
-                      step="1"
-                      defaultValue={p.revenue}
-                    />
-                  </Field>
-                  <Field label="Opis" className="sm:col-span-2 lg:col-span-3">
-                    <Textarea name="description" defaultValue={p.description} />
+                  <Field label="Napomena">
+                    <Input name="description" defaultValue={p.description} />
                   </Field>
                 </div>
 
@@ -145,10 +231,12 @@ export default async function ProjektiPage() {
                   <Button type="submit" variant="secondary">
                     Ažuriraj
                   </Button>
-                  <DeleteButton onDelete={async () => {
-                    "use server";
-                    await deleteProject(p.id);
-                  }} />
+                  <DeleteButton
+                    onDelete={async () => {
+                      "use server";
+                      await deleteProject(p.id);
+                    }}
+                  />
                 </div>
               </form>
             </Card>

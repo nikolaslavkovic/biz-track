@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { FinanceCharts } from "@/components/finance-charts";
+import { FinanceCharts, HallCharts } from "@/components/finance-charts";
 import { Card, StatCard } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { getDashboardData } from "@/lib/analytics";
 import {
   EXPENSE_CATEGORIES,
   formatDate,
+  formatDimensions,
   formatHours,
   formatMoney,
 } from "@/lib/utils";
@@ -13,8 +14,14 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const { summary, series, recentExpenses, recentWork, activeProjects } =
-    await getDashboardData();
+  const {
+    summary,
+    series,
+    recentExpenses,
+    recentWork,
+    activeProjects,
+    hallStats,
+  } = await getDashboardData();
 
   const categoryLabel = (value: string) =>
     EXPENSE_CATEGORIES.find((c) => c.value === value)?.label ?? value;
@@ -68,9 +75,9 @@ export default async function HomePage() {
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          label="Ukupna zarada"
+          label="Ukupna prodajna cena"
           value={formatMoney(summary.revenue)}
-          hint="Sa projekata"
+          hint="Sve hale / konstrukcije"
           tone="accent"
         />
         <StatCard
@@ -121,11 +128,13 @@ export default async function HomePage() {
 
       <FinanceCharts series={series} />
 
+      <HallCharts byWidth={hallStats.byWidth} bySize={hallStats.bySize} />
+
       <section className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-1">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold">
-              Aktivni projekti
+              Aktivne hale
             </h2>
             <Link
               href="/projekti"
@@ -145,7 +154,7 @@ export default async function HomePage() {
                 >
                   <p className="font-medium">{p.name}</p>
                   <p className="text-xs text-[var(--muted)]">
-                    Od {formatDate(p.startDate)}
+                    {formatDimensions(p.lengthM, p.widthM, p.heightM)}
                     {p.client ? ` · ${p.client}` : ""}
                   </p>
                   <p className="text-sm text-[var(--accent)]">
