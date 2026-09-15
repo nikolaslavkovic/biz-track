@@ -36,6 +36,59 @@ export function monthKey(date: string): string {
   return date.slice(0, 7);
 }
 
+/** Monday of the ISO week containing `date` (YYYY-MM-DD). */
+export function weekStartISO(date: string | Date = new Date()): string {
+  const d =
+    typeof date === "string"
+      ? new Date(date + (date.length === 10 ? "T12:00:00" : ""))
+      : new Date(date);
+  const day = d.getDay(); // 0 Sun … 6 Sat
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  return d.toISOString().slice(0, 10);
+}
+
+export function weekEndISO(weekStart: string): string {
+  const d = new Date(weekStart + "T12:00:00");
+  d.setDate(d.getDate() + 6);
+  return d.toISOString().slice(0, 10);
+}
+
+/** HTML week input value, e.g. 2026-W38 */
+export function toWeekInputValue(date: string | Date = new Date()): string {
+  const start = weekStartISO(date);
+  const d = new Date(start + "T12:00:00");
+  const year = d.getFullYear();
+  const jan4 = new Date(year, 0, 4);
+  const startOfYearWeek = weekStartISO(jan4.toISOString().slice(0, 10));
+  const startMs = new Date(start + "T12:00:00").getTime();
+  const yearStartMs = new Date(startOfYearWeek + "T12:00:00").getTime();
+  const weekNum = Math.floor((startMs - yearStartMs) / (7 * 24 * 3600 * 1000)) + 1;
+  return `${year}-W${String(weekNum).padStart(2, "0")}`;
+}
+
+/** Parse HTML week value (2026-W38) → Monday YYYY-MM-DD */
+export function fromWeekInputValue(weekValue: string): string {
+  const match = /^(\d{4})-W(\d{2})$/.exec(weekValue.trim());
+  if (!match) return weekStartISO();
+  const year = Number(match[1]);
+  const week = Number(match[2]);
+  const jan4 = new Date(year, 0, 4, 12, 0, 0);
+  const monday = weekStartISO(jan4.toISOString().slice(0, 10));
+  const d = new Date(monday + "T12:00:00");
+  d.setDate(d.getDate() + (week - 1) * 7);
+  return d.toISOString().slice(0, 10);
+}
+
+export function formatWeekRange(weekStart: string): string {
+  const end = weekEndISO(weekStart);
+  return `${formatDate(weekStart)} – ${formatDate(end)}`;
+}
+
+export function weekKey(date: string): string {
+  return weekStartISO(date);
+}
+
 export const EXPENSE_CATEGORIES = [
   { value: "materijal", label: "Materijal" },
   { value: "mesecni", label: "Mesečni trošak" },

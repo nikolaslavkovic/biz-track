@@ -6,7 +6,7 @@ Web aplikacija za praćenje **troškova, radnih sati, materijala i zarade** u fi
 
 - **Projekti** — naziv, klijent, početak/završetak, status, prihod
 - **Troškovi** — dnevni materijal (cevi, farba, žica…), mesečni (struja, porez…), plate, ostalo
-- **Radnici i sati** — satnica radnika + dnevni unos sati po projektu
+- **Radnici i sati** — satnica radnika + **nedeljni unos sati** (isplata na kraju nedelje) + pregled po nedeljama
 - **Pregled** — ukupna zarada, troškovi, neto, **neto zarada po satu**, grafikoni kroz mesece
 - Podaci se čuvaju u lokalnoj **SQLite** bazi (`data/firma.db`) — ostaju nedeljama i mesecima
 

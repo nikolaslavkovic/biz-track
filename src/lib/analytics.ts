@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { expenses, projects, workers, workLogs } from "@/db/schema";
-import { monthKey } from "@/lib/utils";
+import { monthKey, weekStartISO, weekEndISO, formatWeekRange } from "@/lib/utils";
 
 export type Summary = {
   revenue: number;
@@ -262,4 +262,73 @@ export async function listWorkLogs() {
     .innerJoin(workers, eq(workLogs.workerId, workers.id))
     .leftJoin(projects, eq(workLogs.projectId, projects.id))
     .orderBy(desc(workLogs.date));
+}
+
+export type WeeklyPayrollRow = {
+  workerId: number;
+  workerName: string;
+  hourlyRate: number;
+  hours: number;
+  cost: number;
+};
+
+export type WeeklyPayroll = {
+  weekStart: string;
+  weekEnd: string;
+  label: string;
+  totalHours: number;
+  totalCost: number;
+  workers: WeeklyPayrollRow[];
+  logIds: number[];
+};
+
+/** Group work logs by calendar week (Mon–Sun) for payday overview. */
+export async function getWeeklyPayroll(): Promise<WeeklyPayroll[]> {
+  const logs = await listWorkLogs();
+  const map = new Map<string, WeeklyPayroll>();
+
+  for (const log of logs) {
+    const weekStart = weekStartISO(log.date);
+    let week = map.get(weekStart);
+    if (!week) {
+      week = {
+        weekStart,
+        weekEnd: weekEndISO(weekStart),
+        label: formatWeekRange(weekStart),
+        totalHours: 0,
+        totalCost: 0,
+        workers: [],
+        logIds: [],
+      };
+      map.set(weekStart, week);
+    }
+
+    week.logIds.push(log.id);
+    week.totalHours += log.hours;
+    const cost = Number(log.cost) || log.hours * log.hourlyRate;
+    week.totalCost += cost;
+
+    const existing = week.workers.find((w) => w.workerId === log.workerId);
+    if (existing) {
+      existing.hours += log.hours;
+      existing.cost += cost;
+    } else {
+      week.workers.push({
+        workerId: log.workerId,
+        workerName: log.workerName,
+        hourlyRate: log.hourlyRate,
+        hours: log.hours,
+        cost,
+      });
+    }
+  }
+
+  return [...map.values()]
+    .map((w) => ({
+      ...w,
+      workers: w.workers.sort((a, b) =>
+        a.workerName.localeCompare(b.workerName, "sr"),
+      ),
+    }))
+    .sort((a, b) => (a.weekStart < b.weekStart ? 1 : -1));
 }

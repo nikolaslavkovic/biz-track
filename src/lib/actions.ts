@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
 import { expenses, projects, workers, workLogs } from "@/db/schema";
+import { formatWeekRange, fromWeekInputValue } from "@/lib/utils";
 
 function revalidateAll() {
   revalidatePath("/");
@@ -103,6 +104,47 @@ export async function createWorkLog(formData: FormData) {
     hours,
     note: String(formData.get("note") || "").trim(),
   });
+  revalidateAll();
+}
+
+/** Batch entry for one work week: hours per worker (for payday). */
+export async function createWeeklyWorkLogs(formData: FormData) {
+  const weekValue = String(formData.get("week") || "");
+  const weekStart = fromWeekInputValue(weekValue);
+  const label = formatWeekRange(weekStart);
+  const projectIdRaw = formData.get("projectId");
+  const projectId = projectIdRaw ? Number(projectIdRaw) : null;
+  const noteExtra = String(formData.get("note") || "").trim();
+
+  const rows: Array<{
+    workerId: number;
+    projectId: number | null;
+    date: string;
+    hours: number;
+    note: string;
+  }> = [];
+
+  for (const [key, value] of formData.entries()) {
+    if (!key.startsWith("hours_")) continue;
+    const workerId = Number(key.slice("hours_".length));
+    const hours = Number(value);
+    if (!workerId || !hours || hours <= 0) continue;
+    rows.push({
+      workerId,
+      projectId: projectId || null,
+      date: weekStart,
+      hours,
+      note: noteExtra
+        ? `Nedelja ${label} · ${noteExtra}`
+        : `Nedelja ${label}`,
+    });
+  }
+
+  if (rows.length === 0) {
+    throw new Error("Unesite sate za bar jednog radnika");
+  }
+
+  await db.insert(workLogs).values(rows);
   revalidateAll();
 }
 
