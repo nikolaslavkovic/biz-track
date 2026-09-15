@@ -8,7 +8,6 @@ import {
   BarChart,
   CartesianGrid,
   Legend,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
@@ -49,29 +48,13 @@ function ChartTooltip({
   );
 }
 
-function ChartShell({ children }: { children: React.ReactNode }) {
-  const [ready, setReady] = useState(false);
+export function FinanceCharts({ series }: { series: SeriesPoint[] }) {
+  const [mounted, setMounted] = useState(false);
+
   useEffect(() => {
-    const id = requestAnimationFrame(() => setReady(true));
-    return () => cancelAnimationFrame(id);
+    setMounted(true);
   }, []);
 
-  if (!ready) {
-    return (
-      <div className="flex h-full w-full items-center justify-center text-sm text-[var(--muted)]">
-        Učitavam grafikon…
-      </div>
-    );
-  }
-
-  return (
-    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-      {children}
-    </ResponsiveContainer>
-  );
-}
-
-export function FinanceCharts({ series }: { series: SeriesPoint[] }) {
   return (
     <div className="grid gap-4 lg:grid-cols-2">
       <Card>
@@ -81,9 +64,18 @@ export function FinanceCharts({ series }: { series: SeriesPoint[] }) {
         <p className="mb-4 text-sm text-[var(--muted)]">
           Mesečni pregled prihoda i ukupnih troškova
         </p>
-        <div className="h-72 w-full min-h-[18rem]">
-          <ChartShell>
-            <AreaChart data={series} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+        <div className="h-72 w-full overflow-x-auto">
+          {!mounted ? (
+            <div className="flex h-full items-center justify-center text-sm text-[var(--muted)]">
+              Učitavam grafikon…
+            </div>
+          ) : (
+            <AreaChart
+              width={520}
+              height={280}
+              data={series}
+              margin={{ top: 8, right: 16, left: 0, bottom: 0 }}
+            >
               <defs>
                 <linearGradient id="zaradaFill" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#0f766e" stopOpacity={0.35} />
@@ -121,7 +113,7 @@ export function FinanceCharts({ series }: { series: SeriesPoint[] }) {
                 isAnimationActive={false}
               />
             </AreaChart>
-          </ChartShell>
+          )}
         </div>
       </Card>
 
@@ -132,9 +124,18 @@ export function FinanceCharts({ series }: { series: SeriesPoint[] }) {
         <p className="mb-4 text-sm text-[var(--muted)]">
           Zarada minus troškovi (uključujući rad)
         </p>
-        <div className="h-72 w-full min-h-[18rem]">
-          <ChartShell>
-            <BarChart data={series} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+        <div className="h-72 w-full overflow-x-auto">
+          {!mounted ? (
+            <div className="flex h-full items-center justify-center text-sm text-[var(--muted)]">
+              Učitavam grafikon…
+            </div>
+          ) : (
+            <BarChart
+              width={520}
+              height={280}
+              data={series}
+              margin={{ top: 8, right: 16, left: 0, bottom: 0 }}
+            >
               <CartesianGrid strokeDasharray="3 3" stroke="#cfd8de" />
               <XAxis dataKey="label" tick={{ fill: "#5b6b76", fontSize: 12 }} />
               <YAxis
@@ -150,7 +151,7 @@ export function FinanceCharts({ series }: { series: SeriesPoint[] }) {
                 isAnimationActive={false}
               />
             </BarChart>
-          </ChartShell>
+          )}
         </div>
       </Card>
     </div>

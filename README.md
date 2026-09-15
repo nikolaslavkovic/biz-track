@@ -14,10 +14,13 @@ Web aplikacija za praćenje **troškova, radnih sati, materijala i zarade** u fi
 
 ```bash
 npm install
-npm run dev -- --port 43127
+npm run build
+npm run start
 ```
 
-Otvori [http://127.0.0.1:43127](http://127.0.0.1:43127).
+Za razvoj: `npm run dev -- --port 43127`
+
+Aplikacija sluša na [http://127.0.0.1:43127](http://127.0.0.1:43127).
 
 Pri prvom pokretanju automatski se učitava primer podataka (projekti, radnici, troškovi) da odmah vidiš grafikone. Možeš ih obrisati i unositi svoje.
 
