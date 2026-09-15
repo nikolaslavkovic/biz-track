@@ -6,3 +6,9 @@ dist
 .env*
 .vscode
 .idea
+android-sdk
+android/local.properties
+android/.gradle
+android/**/build
+*.apk
+.capacitor
