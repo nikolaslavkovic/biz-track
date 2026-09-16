@@ -1,4 +1,4 @@
-import { type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { db } from "../db";
 import { Button, Card, Field, Input, Select } from "../components/ui";
 import type { DashboardData } from "../lib/data";
@@ -23,23 +23,52 @@ export function RadniciPage({
   const currentWeekStart = weekStartISO();
   const currentWeek = weekly.find((w) => w.weekStart === currentWeekStart);
   const weekOptions = recentWeekOptions(20);
+  const [message, setMessage] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   async function addWorker(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const fd = new FormData(e.currentTarget);
-    await db.workers.add({
-      name: String(fd.get("name") || "").trim(),
-      hourlyRate: Number(fd.get("hourlyRate") || 0),
-      active: true,
-      createdAt: new Date().toISOString(),
-    });
-    e.currentTarget.reset();
-    await onChange();
+    const form = e.currentTarget;
+    const fd = new FormData(form);
+    const name = String(fd.get("name") || "").trim();
+    const hourlyRate = Number(fd.get("hourlyRate") || 0);
+
+    if (!name) {
+      setMessage("Unesite ime radnika.");
+      return;
+    }
+    if (!hourlyRate || hourlyRate < 0) {
+      setMessage("Unesite ispravnu satnicu.");
+      return;
+    }
+
+    setSaving(true);
+    setMessage(null);
+    try {
+      await db.workers.add({
+        name,
+        hourlyRate,
+        active: true,
+        createdAt: new Date().toISOString(),
+      });
+      form.reset();
+      // restore default satnica after reset
+      const rateInput = form.elements.namedItem("hourlyRate") as HTMLInputElement | null;
+      if (rateInput) rateInput.value = "1000";
+      await onChange();
+      setMessage(`Sačuvan radnik: ${name}`);
+    } catch (err) {
+      console.error(err);
+      setMessage("Greška pri čuvanju radnika. Pokušajte ponovo.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function saveWeekly(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const fd = new FormData(e.currentTarget);
+    const form = e.currentTarget;
+    const fd = new FormData(form);
     const weekStart = String(fd.get("weekStart") || weekStartISO());
     const label = formatWeekRange(weekStart);
     const noteExtra = String(fd.get("note") || "").trim();
@@ -59,23 +88,34 @@ export function RadniciPage({
       });
     }
     if (!rows.length) {
-      alert("Unesite sate za bar jednog radnika");
+      setMessage("Unesite sate za bar jednog radnika.");
       return;
     }
-    await db.workLogs.bulkAdd(rows);
-    e.currentTarget.reset();
-    await onChange();
+    setSaving(true);
+    try {
+      await db.workLogs.bulkAdd(rows);
+      form.reset();
+      await onChange();
+      setMessage("Nedeljni sati sačuvani.");
+    } catch (err) {
+      console.error(err);
+      setMessage("Greška pri čuvanju sati.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function updateWorker(e: FormEvent<HTMLFormElement>, id: number) {
     e.preventDefault();
-    const fd = new FormData(e.currentTarget);
+    const form = e.currentTarget;
+    const fd = new FormData(form);
     await db.workers.update(id, {
       name: String(fd.get("name") || "").trim(),
       hourlyRate: Number(fd.get("hourlyRate") || 0),
       active: String(fd.get("active")) === "true",
     });
     await onChange();
+    setMessage("Radnik ažuriran.");
   }
 
   async function removeWorker(id: number) {
@@ -83,6 +123,7 @@ export function RadniciPage({
     await db.workLogs.where("workerId").equals(id).delete();
     await db.workers.delete(id);
     await onChange();
+    setMessage("Radnik obrisan.");
   }
 
   async function removeLog(id: number) {
@@ -101,6 +142,12 @@ export function RadniciPage({
           Nedeljni unos sati za isplatu — bez podele po projektu.
         </p>
       </div>
+
+      {message ? (
+        <div className="rounded-lg border border-teal-200 bg-teal-50 px-4 py-3 text-sm font-medium text-teal-900">
+          {message}
+        </div>
+      ) : null}
 
       {currentWeek ? (
         <Card className="border-[var(--accent)]/30">
@@ -145,8 +192,8 @@ export function RadniciPage({
                 required
               />
             </Field>
-            <Button type="submit" className="w-full">
-              Sačuvaj radnika
+            <Button type="submit" className="w-full" disabled={saving}>
+              {saving ? "Čuvam…" : "Sačuvaj radnika"}
             </Button>
           </form>
         </Card>
@@ -201,7 +248,7 @@ export function RadniciPage({
               <Field label="Napomena">
                 <Input name="note" placeholder="opciono" />
               </Field>
-              <Button type="submit" className="w-full sm:w-auto">
+              <Button type="submit" className="w-full sm:w-auto" disabled={saving}>
                 Sačuvaj nedeljne sate
               </Button>
             </form>
@@ -213,72 +260,89 @@ export function RadniciPage({
         <h2 className="font-[family-name:var(--font-display)] text-xl font-semibold">
           Pregled po nedeljama
         </h2>
-        {weekly.map((week) => (
-          <Card key={week.weekStart} className="overflow-x-auto p-0">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--line)] bg-[var(--surface-2)]/60 px-4 py-3">
-              <h3 className="font-[family-name:var(--font-display)] text-lg font-semibold">
-                {week.label}
-              </h3>
-              <p className="text-sm">
-                {formatHours(week.totalHours)} ·{" "}
-                <strong className="text-[var(--accent)]">{formatMoney(week.totalCost)}</strong>
-              </p>
-            </div>
-            <table className="w-full text-sm">
-              <tbody>
-                {week.workers.map((w) => (
-                  <tr key={w.workerId} className="border-t border-[var(--line)]">
-                    <td className="px-4 py-2 font-medium">{w.workerName}</td>
-                    <td className="px-4 py-2 text-right">{formatHours(w.hours)}</td>
-                    <td className="px-4 py-2 text-right font-semibold">
-                      {formatMoney(w.cost)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        {weekly.length === 0 ? (
+          <Card>
+            <p className="text-sm text-[var(--muted)]">Još nema unosa sati.</p>
           </Card>
-        ))}
+        ) : (
+          weekly.map((week) => (
+            <Card key={week.weekStart} className="overflow-x-auto p-0">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--line)] bg-[var(--surface-2)]/60 px-4 py-3">
+                <h3 className="font-[family-name:var(--font-display)] text-lg font-semibold">
+                  {week.label}
+                </h3>
+                <p className="text-sm">
+                  {formatHours(week.totalHours)} ·{" "}
+                  <strong className="text-[var(--accent)]">
+                    {formatMoney(week.totalCost)}
+                  </strong>
+                </p>
+              </div>
+              <table className="w-full text-sm">
+                <tbody>
+                  {week.workers.map((w) => (
+                    <tr key={w.workerId} className="border-t border-[var(--line)]">
+                      <td className="px-4 py-2 font-medium">{w.workerName}</td>
+                      <td className="px-4 py-2 text-right">{formatHours(w.hours)}</td>
+                      <td className="px-4 py-2 text-right font-semibold">
+                        {formatMoney(w.cost)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card>
+          ))
+        )}
       </div>
 
       <Card>
         <h2 className="mb-4 font-[family-name:var(--font-display)] text-lg font-semibold">
-          Spisak radnika
+          Spisak radnika ({workers.length})
         </h2>
         <div className="space-y-3">
-          {workers.map((w) => (
-            <form
-              key={w.id}
-              onSubmit={(e) => updateWorker(e, w.id!)}
-              className="grid gap-3 rounded-lg border border-[var(--line)] p-3 sm:flex sm:flex-wrap sm:items-end"
-            >
-              <Field label="Ime" className="min-w-[160px] sm:flex-1">
-                <Input name="name" defaultValue={w.name} required />
-              </Field>
-              <Field label="Satnica">
-                <Input name="hourlyRate" type="number" inputMode="numeric" defaultValue={w.hourlyRate} />
-              </Field>
-              <Field label="Aktivan">
-                <Select name="active" defaultValue={w.active ? "true" : "false"}>
-                  <option value="true">Da</option>
-                  <option value="false">Ne</option>
-                </Select>
-              </Field>
-              <div className="flex gap-2">
-                <Button type="submit" variant="secondary" className="flex-1 sm:flex-none">
-                  Sačuvaj
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="text-[var(--danger)]"
-                  onClick={() => removeWorker(w.id!)}
-                >
-                  Obriši
-                </Button>
-              </div>
-            </form>
-          ))}
+          {workers.length === 0 ? (
+            <p className="text-sm text-[var(--muted)]">Nema radnika.</p>
+          ) : (
+            workers.map((w) => (
+              <form
+                key={w.id}
+                onSubmit={(e) => updateWorker(e, w.id!)}
+                className="grid gap-3 rounded-lg border border-[var(--line)] p-3 sm:flex sm:flex-wrap sm:items-end"
+              >
+                <Field label="Ime" className="min-w-[160px] sm:flex-1">
+                  <Input name="name" defaultValue={w.name} required />
+                </Field>
+                <Field label="Satnica">
+                  <Input
+                    name="hourlyRate"
+                    type="number"
+                    inputMode="numeric"
+                    defaultValue={w.hourlyRate}
+                  />
+                </Field>
+                <Field label="Aktivan">
+                  <Select name="active" defaultValue={w.active ? "true" : "false"}>
+                    <option value="true">Da</option>
+                    <option value="false">Ne</option>
+                  </Select>
+                </Field>
+                <div className="flex gap-2">
+                  <Button type="submit" variant="secondary" className="flex-1 sm:flex-none">
+                    Sačuvaj
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="text-[var(--danger)]"
+                    onClick={() => removeWorker(w.id!)}
+                  >
+                    Obriši
+                  </Button>
+                </div>
+              </form>
+            ))
+          )}
         </div>
       </Card>
 
@@ -298,32 +362,40 @@ export function RadniciPage({
             </tr>
           </thead>
           <tbody>
-            {workLogs.map((l) => {
-              const w = workers.find((x) => x.id === l.workerId);
-              return (
-                <tr key={l.id} className="border-t border-[var(--line)]">
-                  <td className="px-4 py-3">
-                    {formatWeekRange(weekStartISO(l.date))}
-                    <span className="block text-xs text-[var(--muted)]">
-                      {formatDate(l.date)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 font-medium">{w?.name ?? "—"}</td>
-                  <td className="px-4 py-3 text-right">{formatHours(l.hours)}</td>
-                  <td className="px-4 py-3 text-right">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      className="text-[var(--danger)]"
-                      onClick={() => removeLog(l.id!)}
-                    >
-                      Obriši
-                    </Button>
-                  </td>
-                </tr>
-              );
-            })}
+            {workLogs.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="px-4 py-8 text-center text-[var(--muted)]">
+                  Nema unosa.
+                </td>
+              </tr>
+            ) : (
+              workLogs.map((l) => {
+                const w = workers.find((x) => x.id === l.workerId);
+                return (
+                  <tr key={l.id} className="border-t border-[var(--line)]">
+                    <td className="px-4 py-3">
+                      {formatWeekRange(weekStartISO(l.date))}
+                      <span className="block text-xs text-[var(--muted)]">
+                        {formatDate(l.date)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 font-medium">{w?.name ?? "—"}</td>
+                    <td className="px-4 py-3 text-right">{formatHours(l.hours)}</td>
+                    <td className="px-4 py-3 text-right">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="text-[var(--danger)]"
+                        onClick={() => removeLog(l.id!)}
+                      >
+                        Obriši
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
       </Card>
