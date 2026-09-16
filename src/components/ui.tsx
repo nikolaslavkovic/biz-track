@@ -17,9 +17,9 @@ const buttonVariants = cva(
         danger: "bg-[var(--danger)] text-white hover:opacity-90",
       },
       size: {
-        default: "h-10 px-4 py-2",
-        sm: "h-8 rounded-md px-3 text-xs",
-        lg: "h-11 rounded-md px-6",
+        default: "min-h-12 h-12 px-4 py-2 text-base sm:min-h-10 sm:h-10 sm:text-sm",
+        sm: "min-h-10 h-10 rounded-md px-3 text-sm sm:min-h-8 sm:h-8 sm:text-xs",
+        lg: "min-h-12 h-12 rounded-md px-6 text-base",
       },
     },
     defaultVariants: { variant: "default", size: "default" },
@@ -43,7 +43,7 @@ export function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
     <input
       {...props}
       className={cn(
-        "flex h-10 w-full rounded-md border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--ink)] placeholder:text-[var(--muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]",
+        "flex min-h-12 h-12 w-full rounded-md border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-base text-[var(--ink)] placeholder:text-[var(--muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] sm:min-h-10 sm:h-10 sm:text-sm",
         props.className,
       )}
     />
@@ -55,7 +55,7 @@ export function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
     <select
       {...props}
       className={cn(
-        "flex h-10 w-full rounded-md border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]",
+        "flex min-h-12 h-12 w-full rounded-md border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-base text-[var(--ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] sm:min-h-10 sm:h-10 sm:text-sm",
         props.className,
       )}
     />

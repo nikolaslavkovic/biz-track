@@ -90,6 +90,22 @@ export function toWeekInputValue(date: string | Date = new Date()): string {
   return `${year}-W${String(weekNum).padStart(2, "0")}`;
 }
 
+/** Recent Mon–Sun weeks for mobile-friendly select (Android WebView lacks type=week). */
+export function recentWeekOptions(count = 16): Array<{ value: string; label: string }> {
+  const options = [];
+  const current = weekStartISO();
+  for (let i = 0; i < count; i++) {
+    const d = new Date(current + "T12:00:00");
+    d.setDate(d.getDate() - i * 7);
+    const start = weekStartISO(d);
+    options.push({
+      value: start,
+      label: formatWeekRange(start) + (i === 0 ? " (ova nedelja)" : ""),
+    });
+  }
+  return options;
+}
+
 export function fromWeekInputValue(weekValue: string): string {
   const match = /^(\d{4})-W(\d{2})$/.exec(weekValue.trim());
   if (!match) return weekStartISO();

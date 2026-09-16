@@ -33,7 +33,7 @@ export default function App() {
   return (
     <div className="flex min-h-screen flex-col">
       <AppNav />
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-5 pb-24 sm:px-6 sm:py-8 md:pb-8">
         <Routes>
           <Route path="/" element={<HomePage data={data} />} />
           <Route
@@ -51,8 +51,10 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
-      <footer className="border-t border-[var(--line)] py-4 text-center text-xs text-[var(--muted)]">
-        FirmaRačun · podaci ostaju u browseru na ovom uređaju · radi offline
+      <footer
+        className="hidden border-t border-[var(--line)] py-4 text-center text-xs text-[var(--muted)] md:block"
+      >
+        FirmaRačun · podaci ostaju na ovom uređaju · radi offline
       </footer>
     </div>
   );

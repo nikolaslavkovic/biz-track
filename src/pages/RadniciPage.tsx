@@ -7,8 +7,7 @@ import {
   formatHours,
   formatMoney,
   formatWeekRange,
-  fromWeekInputValue,
-  toWeekInputValue,
+  recentWeekOptions,
   weekStartISO,
 } from "../lib/utils";
 
@@ -23,6 +22,7 @@ export function RadniciPage({
   const active = workers.filter((w) => w.active);
   const currentWeekStart = weekStartISO();
   const currentWeek = weekly.find((w) => w.weekStart === currentWeekStart);
+  const weekOptions = recentWeekOptions(20);
 
   async function addWorker(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -40,7 +40,7 @@ export function RadniciPage({
   async function saveWeekly(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    const weekStart = fromWeekInputValue(String(fd.get("week") || ""));
+    const weekStart = String(fd.get("weekStart") || weekStartISO());
     const label = formatWeekRange(weekStart);
     const noteExtra = String(fd.get("note") || "").trim();
     const now = new Date().toISOString();
@@ -123,22 +123,35 @@ export function RadniciPage({
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-5">
-        <Card className="lg:col-span-2">
+        <Card className="order-1 lg:col-span-2 lg:order-none">
           <h2 className="mb-4 font-[family-name:var(--font-display)] text-lg font-semibold">
             Novi radnik
           </h2>
           <form onSubmit={addWorker} className="grid gap-3">
-            <Field label="Ime">
-              <Input name="name" required />
+            <Field label="Ime i prezime">
+              <Input
+                name="name"
+                required
+                autoComplete="name"
+                placeholder="npr. Nikola Jovanović"
+              />
             </Field>
-            <Field label="Satnica (RSD/h)">
-              <Input name="hourlyRate" type="number" defaultValue={1000} required />
+            <Field label="Satnica (RSD / sat)">
+              <Input
+                name="hourlyRate"
+                type="number"
+                inputMode="numeric"
+                defaultValue={1000}
+                required
+              />
             </Field>
-            <Button type="submit">Dodaj</Button>
+            <Button type="submit" className="w-full">
+              Sačuvaj radnika
+            </Button>
           </form>
         </Card>
 
-        <Card className="lg:col-span-3">
+        <Card className="order-2 lg:col-span-3 lg:order-none">
           <h2 className="mb-1 font-[family-name:var(--font-display)] text-lg font-semibold">
             Nedeljni unos sati
           </h2>
@@ -146,48 +159,51 @@ export function RadniciPage({
             Svi rade na svim projektima — samo sati po radniku.
           </p>
           {active.length === 0 ? (
-            <p className="text-sm text-[var(--muted)]">Prvo dodajte radnika.</p>
+            <p className="text-sm text-[var(--muted)]">
+              Prvo sačuvajte bar jednog radnika iznad.
+            </p>
           ) : (
             <form onSubmit={saveWeekly} className="space-y-4">
               <Field label="Radna nedelja">
-                <Input name="week" type="week" defaultValue={toWeekInputValue()} required />
+                <Select name="weekStart" defaultValue={currentWeekStart} required>
+                  {weekOptions.map((w) => (
+                    <option key={w.value} value={w.value}>
+                      {w.label}
+                    </option>
+                  ))}
+                </Select>
               </Field>
-              <div className="overflow-x-auto rounded-lg border border-[var(--line)]">
-                <table className="w-full text-sm">
-                  <thead className="bg-[var(--surface-2)] text-xs uppercase text-[var(--muted)]">
-                    <tr>
-                      <th className="px-3 py-2 text-left">Radnik</th>
-                      <th className="px-3 py-2 text-right">Sati</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {active.map((w) => (
-                      <tr key={w.id} className="border-t border-[var(--line)]">
-                        <td className="px-3 py-2">
-                          {w.name}
-                          <span className="ml-2 text-xs text-[var(--muted)]">
-                            {formatMoney(w.hourlyRate)}/h
-                          </span>
-                        </td>
-                        <td className="px-3 py-2 text-right">
-                          <Input
-                            name={`hours_${w.id}`}
-                            type="number"
-                            min="0"
-                            step="0.5"
-                            placeholder="0"
-                            className="ml-auto max-w-[110px] text-right"
-                          />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="space-y-3">
+                {active.map((w) => (
+                  <div
+                    key={w.id}
+                    className="rounded-lg border border-[var(--line)] bg-[var(--surface-2)]/40 p-3"
+                  >
+                    <div className="mb-2 flex items-baseline justify-between gap-2">
+                      <p className="font-medium">{w.name}</p>
+                      <p className="text-xs text-[var(--muted)]">
+                        {formatMoney(w.hourlyRate)}/h
+                      </p>
+                    </div>
+                    <Field label="Sati ove nedelje">
+                      <Input
+                        name={`hours_${w.id}`}
+                        type="number"
+                        inputMode="decimal"
+                        min="0"
+                        step="0.5"
+                        placeholder="0"
+                      />
+                    </Field>
+                  </div>
+                ))}
               </div>
               <Field label="Napomena">
                 <Input name="note" placeholder="opciono" />
               </Field>
-              <Button type="submit">Sačuvaj nedeljne sate</Button>
+              <Button type="submit" className="w-full sm:w-auto">
+                Sačuvaj nedeljne sate
+              </Button>
             </form>
           )}
         </Card>
@@ -234,13 +250,13 @@ export function RadniciPage({
             <form
               key={w.id}
               onSubmit={(e) => updateWorker(e, w.id!)}
-              className="flex flex-wrap items-end gap-3 rounded-lg border border-[var(--line)] p-3"
+              className="grid gap-3 rounded-lg border border-[var(--line)] p-3 sm:flex sm:flex-wrap sm:items-end"
             >
-              <Field label="Ime" className="min-w-[160px] flex-1">
+              <Field label="Ime" className="min-w-[160px] sm:flex-1">
                 <Input name="name" defaultValue={w.name} required />
               </Field>
               <Field label="Satnica">
-                <Input name="hourlyRate" type="number" defaultValue={w.hourlyRate} />
+                <Input name="hourlyRate" type="number" inputMode="numeric" defaultValue={w.hourlyRate} />
               </Field>
               <Field label="Aktivan">
                 <Select name="active" defaultValue={w.active ? "true" : "false"}>
@@ -248,18 +264,19 @@ export function RadniciPage({
                   <option value="false">Ne</option>
                 </Select>
               </Field>
-              <Button type="submit" size="sm" variant="secondary">
-                Sačuvaj
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                className="text-[var(--danger)]"
-                onClick={() => removeWorker(w.id!)}
-              >
-                Obriši
-              </Button>
+              <div className="flex gap-2">
+                <Button type="submit" variant="secondary" className="flex-1 sm:flex-none">
+                  Sačuvaj
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="text-[var(--danger)]"
+                  onClick={() => removeWorker(w.id!)}
+                >
+                  Obriši
+                </Button>
+              </div>
             </form>
           ))}
         </div>
