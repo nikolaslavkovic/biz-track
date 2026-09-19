@@ -91,7 +91,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-xl border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[0_1px_0_rgba(15,23,42,0.04)]",
+        "min-w-0 rounded-xl border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[0_1px_0_rgba(15,23,42,0.04)] sm:p-5",
         className,
       )}
     >
