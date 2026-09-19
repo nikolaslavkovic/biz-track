@@ -3,13 +3,16 @@ import { db, setEurToRsdRate, type Project } from "../db";
 import { Button, Card, Field, Input, Select } from "../components/ui";
 import type { DashboardData } from "../lib/data";
 import {
+  HALL_WIDTH_COLORS,
   PROJECT_STATUSES,
   ROOF_TYPES,
   SALE_CURRENCIES,
+  formatDate,
   formatDimensions,
   formatSalePrice,
   hallColor,
   projectRate,
+  roofLabel,
   todayISO,
 } from "../lib/utils";
 
@@ -22,10 +25,10 @@ export function ProjektiPage({
 }) {
   const { projects, eurToRsd } = data;
   const [rate, setRate] = useState(String(eurToRsd));
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
 
-  // Red porudžbine = redosled unosa (id rastuće)
   const ordered = [...projects].sort((a, b) => (a.id ?? 0) - (b.id ?? 0));
+  const selected = ordered.find((p) => p.id === selectedId) ?? null;
 
   async function saveRate(e: FormEvent) {
     e.preventDefault();
@@ -37,7 +40,7 @@ export function ProjektiPage({
     e.preventDefault();
     const form = e.currentTarget;
     const fd = new FormData(form);
-    await db.projects.add({
+    const id = await db.projects.add({
       name: String(fd.get("name") || "").trim(),
       client: String(fd.get("client") || "").trim(),
       clientPhone: String(fd.get("clientPhone") || "").trim(),
@@ -57,13 +60,13 @@ export function ProjektiPage({
       createdAt: new Date().toISOString(),
     });
     form.reset();
+    setSelectedId(id as number);
     await onChange();
   }
 
   async function update(e: FormEvent<HTMLFormElement>, id: number) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    // eurRateAtSale se NE menja — ostaje kurs iz trenutka unosa
     await db.projects.update(id, {
       name: String(fd.get("name") || "").trim(),
       client: String(fd.get("client") || "").trim(),
@@ -81,14 +84,13 @@ export function ProjektiPage({
       heightM: Number(fd.get("heightM") || 0),
       roofType: String(fd.get("roofType") || "dve_vode") as Project["roofType"],
     });
-    setEditingId(null);
     await onChange();
   }
 
   async function remove(id: number) {
     if (!confirm("Obrisati porudžbinu?")) return;
     await db.projects.delete(id);
-    if (editingId === id) setEditingId(null);
+    if (selectedId === id) setSelectedId(null);
     await onChange();
   }
 
@@ -99,16 +101,15 @@ export function ProjektiPage({
           Hale — porudžbine
         </h1>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          Po redu unosa · boja = širina · ivica: puna = 2 vode, isprekidana = 1
-          voda
+          Klikni na dimenzije da otvoriš detalje ispod
         </p>
       </div>
 
-      {/* 1) Spisak porudžbina */}
       <section className="space-y-2">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--muted)]">
           Poručene hale ({ordered.length})
         </h2>
+
         {ordered.length === 0 ? (
           <Card>
             <p className="text-sm text-[var(--muted)]">Još nema porudžbina.</p>
@@ -116,210 +117,240 @@ export function ProjektiPage({
         ) : (
           <ul className="space-y-2">
             {ordered.map((p, index) => {
-              const colors = hallColor(p.widthM, p.roofType);
-              const rateUsed = projectRate(p, eurToRsd);
-              const isEdit = editingId === p.id;
+              const colors = hallColor(p.widthM);
+              const active = selectedId === p.id;
               const dashed = p.roofType === "jedna_voda";
 
               return (
                 <li key={p.id}>
-                  <div
-                    className="overflow-hidden rounded-xl border-2"
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSelectedId(active ? null : (p.id ?? null))
+                    }
+                    className="flex w-full items-center gap-3 rounded-xl border-2 px-3 py-3 text-left transition-shadow"
                     style={{
                       backgroundColor: colors.bg,
                       borderColor: colors.border,
                       borderStyle: dashed ? "dashed" : "solid",
                       color: colors.text,
+                      boxShadow: active
+                        ? `0 0 0 2px ${colors.chip}`
+                        : undefined,
                     }}
                   >
-                    <button
-                      type="button"
-                      className="flex w-full items-start gap-3 px-3 py-3 text-left"
-                      onClick={() =>
-                        setEditingId(isEdit ? null : (p.id ?? null))
-                      }
+                    <span
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white"
+                      style={{ backgroundColor: colors.chip }}
                     >
-                      <span
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white"
-                        style={{ backgroundColor: colors.chip }}
-                      >
-                        #{index + 1}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <p className="truncate font-semibold">{p.name}</p>
-                          <span
-                            className="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase text-white"
-                            style={{ backgroundColor: colors.chip }}
-                          >
-                            {p.widthM}m
-                          </span>
-                          <span className="rounded border border-current/30 px-1.5 py-0.5 text-[10px] font-semibold">
-                            {p.roofType === "jedna_voda" ? "1 voda" : "2 vode"}
-                          </span>
-                        </div>
-                        <p className="mt-0.5 text-xs opacity-80">
-                          {formatDimensions(p.lengthM, p.widthM, p.heightM)} ·{" "}
-                          {p.client}
-                          {p.clientPhone ? ` · ${p.clientPhone}` : ""}
-                        </p>
-                        <p className="mt-1 text-sm font-semibold">
-                          {formatSalePrice(
-                            p.revenue,
-                            p.revenueCurrency,
-                            rateUsed,
-                          )}
-                        </p>
-                      </div>
-                      <span className="shrink-0 text-[10px] font-medium uppercase opacity-60">
-                        {isEdit ? "Zatvori" : "Izmeni"}
-                      </span>
-                    </button>
-
-                    {isEdit ? (
-                      <form
-                        onSubmit={(e) => update(e, p.id!)}
-                        className="space-y-3 border-t border-black/10 bg-white/70 px-3 py-3"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          <Field label="Naziv">
-                            <Input name="name" defaultValue={p.name} required />
-                          </Field>
-                          <Field label="Klijent">
-                            <Input name="client" defaultValue={p.client} />
-                          </Field>
-                          <Field label="Telefon">
-                            <Input
-                              name="clientPhone"
-                              defaultValue={p.clientPhone}
-                            />
-                          </Field>
-                          <Field label="Širina">
-                            <Input
-                              name="widthM"
-                              type="number"
-                              step="0.1"
-                              defaultValue={p.widthM}
-                            />
-                          </Field>
-                          <Field label="Dužina">
-                            <Input
-                              name="lengthM"
-                              type="number"
-                              step="0.1"
-                              defaultValue={p.lengthM}
-                            />
-                          </Field>
-                          <Field label="Visina">
-                            <Input
-                              name="heightM"
-                              type="number"
-                              step="0.1"
-                              defaultValue={p.heightM}
-                            />
-                          </Field>
-                          <Field label="Krov">
-                            <Select name="roofType" defaultValue={p.roofType}>
-                              {ROOF_TYPES.map((r) => (
-                                <option key={r.value} value={r.value}>
-                                  {r.label}
-                                </option>
-                              ))}
-                            </Select>
-                          </Field>
-                          <Field label="Cena">
-                            <Input
-                              name="revenue"
-                              type="number"
-                              step="0.01"
-                              defaultValue={p.revenue}
-                            />
-                          </Field>
-                          <Field label="Valuta">
-                            <Select
-                              name="revenueCurrency"
-                              defaultValue={p.revenueCurrency}
-                            >
-                              {SALE_CURRENCIES.map((c) => (
-                                <option key={c.value} value={c.value}>
-                                  {c.label}
-                                </option>
-                              ))}
-                            </Select>
-                          </Field>
-                          <Field label="Status">
-                            <Select name="status" defaultValue={p.status}>
-                              {PROJECT_STATUSES.map((s) => (
-                                <option key={s.value} value={s.value}>
-                                  {s.label}
-                                </option>
-                              ))}
-                            </Select>
-                          </Field>
-                          <Field label="Početak">
-                            <Input
-                              name="startDate"
-                              type="date"
-                              defaultValue={p.startDate}
-                            />
-                          </Field>
-                          <Field label="Završetak">
-                            <Input
-                              name="endDate"
-                              type="date"
-                              defaultValue={p.endDate ?? ""}
-                            />
-                          </Field>
-                        </div>
-                        <p className="text-[11px] text-[var(--muted)]">
-                          Zaključan kurs ove porudžbine:{" "}
-                          <strong>1 EUR = {rateUsed} RSD</strong> (ne menja se)
-                        </p>
-                        <div className="flex gap-2">
-                          <Button type="submit" variant="secondary">
-                            Sačuvaj izmene
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            className="text-[var(--danger)]"
-                            onClick={() => remove(p.id!)}
-                          >
-                            Obriši
-                          </Button>
-                        </div>
-                      </form>
-                    ) : null}
-                  </div>
+                      #{index + 1}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-[family-name:var(--font-display)] text-base font-bold tracking-tight sm:text-lg">
+                        {formatDimensions(p.lengthM, p.widthM, p.heightM)}
+                      </p>
+                      <p className="mt-0.5 text-xs opacity-75">
+                        {p.roofType === "jedna_voda" ? "1 voda" : "2 vode"}
+                        {p.client ? ` · ${p.client}` : ""}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-[10px] font-semibold uppercase opacity-60">
+                      {active ? "▲" : "▼"}
+                    </span>
+                  </button>
                 </li>
               );
             })}
           </ul>
         )}
 
-        {/* Legenda */}
-        <div className="flex flex-wrap gap-3 pt-1 text-[10px] text-[var(--muted)]">
+        {/* Detalji ispod liste */}
+        {selected ? (
+          <Card className="!p-3 sm:!p-4">
+            <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <h3 className="font-[family-name:var(--font-display)] text-lg font-bold">
+                  {formatDimensions(
+                    selected.lengthM,
+                    selected.widthM,
+                    selected.heightM,
+                  )}
+                </h3>
+                <p className="text-sm text-[var(--muted)]">
+                  {selected.name || "Bez naziva"} · {roofLabel(selected.roofType)}
+                </p>
+                <p className="text-sm text-[var(--muted)]">
+                  {selected.client}
+                  {selected.clientPhone ? ` · ${selected.clientPhone}` : ""}
+                </p>
+                <p className="mt-1 font-semibold text-[var(--accent)]">
+                  {formatSalePrice(
+                    selected.revenue,
+                    selected.revenueCurrency,
+                    projectRate(selected, eurToRsd),
+                  )}
+                </p>
+                <p className="text-xs text-[var(--muted)]">
+                  {formatDate(selected.startDate)}
+                  {selected.endDate ? ` – ${formatDate(selected.endDate)}` : ""}
+                </p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => setSelectedId(null)}
+              >
+                Zatvori
+              </Button>
+            </div>
+
+            <form
+              key={selected.id}
+              onSubmit={(e) => update(e, selected.id!)}
+              className="space-y-3 border-t border-[var(--line)] pt-3"
+            >
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Naziv">
+                  <Input name="name" defaultValue={selected.name} required />
+                </Field>
+                <Field label="Klijent">
+                  <Input name="client" defaultValue={selected.client} />
+                </Field>
+                <Field label="Telefon">
+                  <Input
+                    name="clientPhone"
+                    defaultValue={selected.clientPhone}
+                  />
+                </Field>
+                <Field label="Širina (m)">
+                  <Input
+                    name="widthM"
+                    type="number"
+                    step="0.1"
+                    defaultValue={selected.widthM}
+                  />
+                </Field>
+                <Field label="Dužina (m)">
+                  <Input
+                    name="lengthM"
+                    type="number"
+                    step="0.1"
+                    defaultValue={selected.lengthM}
+                  />
+                </Field>
+                <Field label="Visina (m)">
+                  <Input
+                    name="heightM"
+                    type="number"
+                    step="0.1"
+                    defaultValue={selected.heightM}
+                  />
+                </Field>
+                <Field label="Krov">
+                  <Select name="roofType" defaultValue={selected.roofType}>
+                    {ROOF_TYPES.map((r) => (
+                      <option key={r.value} value={r.value}>
+                        {r.label}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+                <Field label="Cena">
+                  <Input
+                    name="revenue"
+                    type="number"
+                    step="0.01"
+                    defaultValue={selected.revenue}
+                  />
+                </Field>
+                <Field label="Valuta">
+                  <Select
+                    name="revenueCurrency"
+                    defaultValue={selected.revenueCurrency}
+                  >
+                    {SALE_CURRENCIES.map((c) => (
+                      <option key={c.value} value={c.value}>
+                        {c.label}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+                <Field label="Status">
+                  <Select name="status" defaultValue={selected.status}>
+                    {PROJECT_STATUSES.map((s) => (
+                      <option key={s.value} value={s.value}>
+                        {s.label}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+                <Field label="Početak">
+                  <Input
+                    name="startDate"
+                    type="date"
+                    defaultValue={selected.startDate}
+                  />
+                </Field>
+                <Field label="Završetak">
+                  <Input
+                    name="endDate"
+                    type="date"
+                    defaultValue={selected.endDate ?? ""}
+                  />
+                </Field>
+              </div>
+              <p className="text-[11px] text-[var(--muted)]">
+                Zaključan kurs:{" "}
+                <strong>
+                  1 EUR = {projectRate(selected, eurToRsd)} RSD
+                </strong>
+              </p>
+              <div className="flex gap-2">
+                <Button type="submit" variant="secondary">
+                  Sačuvaj izmene
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="text-[var(--danger)]"
+                  onClick={() => remove(selected.id!)}
+                >
+                  Obriši
+                </Button>
+              </div>
+            </form>
+          </Card>
+        ) : null}
+
+        <div className="flex flex-wrap gap-2 pt-1 text-[10px] text-[var(--muted)]">
+          {Object.entries(HALL_WIDTH_COLORS).map(([w, c]) => (
+            <span key={w} className="inline-flex items-center gap-1">
+              <span
+                className="h-3 w-3 rounded-sm"
+                style={{ backgroundColor: c.chip }}
+              />
+              {w}m
+            </span>
+          ))}
           <span className="inline-flex items-center gap-1">
-            <span className="h-3 w-6 rounded border-2 border-teal-700 border-solid" />
+            <span className="h-3 w-5 rounded border-2 border-slate-500 border-solid" />
             2 vode
           </span>
           <span className="inline-flex items-center gap-1">
-            <span className="h-3 w-6 rounded border-2 border-teal-700 border-dashed" />
+            <span className="h-3 w-5 rounded border-2 border-slate-500 border-dashed" />
             1 voda
           </span>
-          <span>Boja kartice = širina hale</span>
         </div>
       </section>
 
-      {/* 2) Nova porudžbina */}
       <Card>
         <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg font-semibold">
           Nova porudžbina
         </h2>
         <p className="mb-3 text-xs text-[var(--muted)]">
-          Ako je cena u EUR, koristi se trenutni kurs ({eurToRsd}) i zaključava
-          se na ovoj porudžbini.
+          EUR cena koristi trenutni kurs ({eurToRsd}) i zaključava se na
+          porudžbini.
         </p>
         <form
           onSubmit={create}
@@ -390,7 +421,6 @@ export function ProjektiPage({
         </form>
       </Card>
 
-      {/* 3) Kurs na kraju */}
       <Card>
         <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold">
           Kurs EUR → RSD

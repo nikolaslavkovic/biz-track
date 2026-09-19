@@ -61,35 +61,72 @@ export function formatSalePrice(
   return main;
 }
 
-/** Boja hale po širini + krovu (1 / 2 vode) */
-export function hallColor(widthM: number, roofType: string): {
+/** Fiksne boje po širini hale (m) */
+export const HALL_WIDTH_COLORS: Record<
+  number,
+  { bg: string; border: string; text: string; chip: string; label: string }
+> = {
+  6: {
+    bg: "#fef2f2",
+    border: "#dc2626",
+    text: "#7f1d1d",
+    chip: "#dc2626",
+    label: "crvena",
+  },
+  8: {
+    bg: "#eff6ff",
+    border: "#2563eb",
+    text: "#1e3a8a",
+    chip: "#2563eb",
+    label: "plava",
+  },
+  10: {
+    bg: "#ecfdf5",
+    border: "#059669",
+    text: "#064e3b",
+    chip: "#059669",
+    label: "zelena",
+  },
+  12: {
+    bg: "#fff7ed",
+    border: "#ea580c",
+    text: "#7c2d12",
+    chip: "#ea580c",
+    label: "narandžasta",
+  },
+  15: {
+    bg: "#faf5ff",
+    border: "#7c3aed",
+    text: "#4c1d95",
+    chip: "#7c3aed",
+    label: "ljubičasta",
+  },
+  18: {
+    bg: "#fefce8",
+    border: "#ca8a04",
+    text: "#713f12",
+    chip: "#ca8a04",
+    label: "žuta",
+  },
+};
+
+const HALL_WIDTH_FALLBACK = {
+  bg: "#f8fafc",
+  border: "#64748b",
+  text: "#1e293b",
+  chip: "#64748b",
+  label: "siva",
+};
+
+export function hallColor(widthM: number, _roofType?: string): {
   bg: string;
   border: string;
   text: string;
   chip: string;
+  label: string;
 } {
-  const palette = [
-    { bg: "#ecfdf5", border: "#0f766e", text: "#134e4a", chip: "#0f766e" },
-    { bg: "#eff6ff", border: "#1d4e89", text: "#1e3a5f", chip: "#1d4e89" },
-    { bg: "#fff7ed", border: "#c2410c", text: "#7c2d12", chip: "#c2410c" },
-    { bg: "#faf5ff", border: "#7e22ce", text: "#581c87", chip: "#7e22ce" },
-    { bg: "#f0fdfa", border: "#0d9488", text: "#115e59", chip: "#0d9488" },
-    { bg: "#fef2f2", border: "#b91c1c", text: "#7f1d1d", chip: "#b91c1c" },
-    { bg: "#f8fafc", border: "#475569", text: "#1e293b", chip: "#475569" },
-    { bg: "#fefce8", border: "#a16207", text: "#713f12", chip: "#a16207" },
-  ];
-  const idx = Math.abs(Math.round(widthM * 10)) % palette.length;
-  const base = palette[idx]!;
-  // jednu vodu = isprekidana / blaži ton; dve vode = punija boja
-  if (roofType === "jedna_voda") {
-    return {
-      bg: base.bg,
-      border: base.border,
-      text: base.text,
-      chip: base.chip,
-    };
-  }
-  return base;
+  const key = Math.round(Number(widthM) || 0);
+  return HALL_WIDTH_COLORS[key] ?? HALL_WIDTH_FALLBACK;
 }
 
 export function formatHours(value: number): string {
