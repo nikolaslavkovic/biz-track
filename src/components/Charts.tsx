@@ -113,6 +113,7 @@ function useNarrow() {
 
 export function FinanceCharts({
   series,
+  onlyNeto = false,
 }: {
   series: Array<{
     label: string;
@@ -120,6 +121,7 @@ export function FinanceCharts({
     troskovi: number;
     neto: number;
   }>;
+  onlyNeto?: boolean;
 }) {
   const narrow = useNarrow();
   const tick = { fill: "#5b6b76", fontSize: narrow ? 9 : 11 };
@@ -127,7 +129,50 @@ export function FinanceCharts({
   const margin = narrow
     ? { top: 2, right: 2, left: -8, bottom: 0 }
     : { top: 6, right: 8, left: 0, bottom: 0 };
-  const chartH = narrow ? 130 : 240;
+  const chartH = narrow ? 160 : 240;
+
+  const netoChart = (
+    <Card className="w-full max-w-full overflow-hidden !p-2.5 sm:!p-5">
+      <h3 className="font-[family-name:var(--font-display)] text-sm font-semibold sm:text-lg">
+        Neto po mesecu
+      </h3>
+      <p className="mb-1.5 text-[10px] text-[var(--muted)] sm:mb-3 sm:text-sm">
+        Zarada − troškovi
+      </p>
+      <ChartFrame height={chartH}>
+        {({ width, height }) => (
+          <BarChart width={width} height={height} data={series} margin={margin}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#cfd8de" />
+            <XAxis
+              dataKey="label"
+              tick={tick}
+              interval="preserveStartEnd"
+              minTickGap={narrow ? 36 : 20}
+              tickMargin={4}
+            />
+            <YAxis
+              width={yW}
+              tick={tick}
+              tickCount={narrow ? 4 : 5}
+              tickFormatter={(v) => `${Math.round(Number(v) / 1000)}k`}
+            />
+            <Tooltip content={<MoneyTooltip />} />
+            <Bar
+              dataKey="neto"
+              name="Neto"
+              fill="#0f766e"
+              radius={[4, 4, 0, 0]}
+              isAnimationActive={false}
+            />
+          </BarChart>
+        )}
+      </ChartFrame>
+    </Card>
+  );
+
+  if (onlyNeto) {
+    return <div className="w-full min-w-0 max-w-full">{netoChart}</div>;
+  }
 
   return (
     <div className="grid w-full min-w-0 max-w-full gap-2 sm:gap-4 lg:grid-cols-2">
@@ -192,40 +237,7 @@ export function FinanceCharts({
         </ChartFrame>
       </Card>
 
-      <Card className="w-full max-w-full overflow-hidden !p-2.5 sm:!p-5">
-        <h3 className="font-[family-name:var(--font-display)] text-sm font-semibold sm:text-lg">
-          Neto po mesecu
-        </h3>
-        <p className="mb-1.5 text-[10px] text-[var(--muted)] sm:mb-3 sm:text-sm">Zarada − troškovi</p>
-        <ChartFrame height={chartH}>
-          {({ width, height }) => (
-            <BarChart width={width} height={height} data={series} margin={margin}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#cfd8de" />
-              <XAxis
-                dataKey="label"
-                tick={tick}
-                interval="preserveStartEnd"
-                minTickGap={narrow ? 36 : 20}
-                tickMargin={4}
-              />
-              <YAxis
-                width={yW}
-                tick={tick}
-                tickCount={narrow ? 4 : 5}
-                tickFormatter={(v) => `${Math.round(Number(v) / 1000)}k`}
-              />
-              <Tooltip content={<MoneyTooltip />} />
-              <Bar
-                dataKey="neto"
-                name="Neto"
-                fill="#0f766e"
-                radius={[4, 4, 0, 0]}
-                isAnimationActive={false}
-              />
-            </BarChart>
-          )}
-        </ChartFrame>
-      </Card>
+      {netoChart}
     </div>
   );
 }
