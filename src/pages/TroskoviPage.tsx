@@ -104,47 +104,54 @@ export function TroskoviPage({
         </form>
       </Card>
 
-      <Card className="overflow-x-auto p-0">
-        <table className="w-full min-w-[640px] text-left text-sm">
-          <thead className="border-b border-[var(--line)] bg-[var(--surface-2)] text-xs uppercase text-[var(--muted)]">
-            <tr>
-              <th className="px-4 py-3">Datum</th>
-              <th className="px-4 py-3">Kategorija</th>
-              <th className="px-4 py-3">Stavka</th>
-              <th className="px-4 py-3 text-right">Iznos</th>
-              <th className="px-4 py-3" />
-            </tr>
-          </thead>
-          <tbody>
+      <section className="space-y-3">
+        <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold">
+          Istorija
+        </h2>
+        {expenses.length === 0 ? (
+          <Card>
+            <p className="text-sm text-[var(--muted)]">Nema unetih troškova.</p>
+          </Card>
+        ) : (
+          <ul className="space-y-2">
             {expenses.map((e) => (
-              <tr key={e.id} className="border-b border-[var(--line)]">
-                <td className="px-4 py-3 whitespace-nowrap">{formatDate(e.date)}</td>
-                <td className="px-4 py-3">{categoryLabel(e.category)}</td>
-                <td className="px-4 py-3">
-                  <p className="font-medium">{e.subcategory || "—"}</p>
-                  {e.description ? (
-                    <p className="text-xs text-[var(--muted)]">{e.description}</p>
-                  ) : null}
-                </td>
-                <td className="px-4 py-3 text-right font-semibold">
-                  {formatMoney(e.amount)}
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    className="text-[var(--danger)]"
-                    onClick={() => remove(e.id!)}
-                  >
-                    Obriši
-                  </Button>
-                </td>
-              </tr>
+              <li key={e.id}>
+                <Card className="!p-3 sm:!p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">
+                        {e.subcategory || categoryLabel(e.category)}
+                      </p>
+                      <p className="mt-0.5 text-xs text-[var(--muted)]">
+                        {formatDate(e.date)} · {categoryLabel(e.category)}
+                      </p>
+                      {e.description ? (
+                        <p className="mt-1 break-words text-sm text-[var(--muted)]">
+                          {e.description}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="font-semibold tabular-nums">
+                        {formatMoney(e.amount)}
+                      </p>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="mt-1 text-[var(--danger)]"
+                        onClick={() => remove(e.id!)}
+                      >
+                        Obriši
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              </li>
             ))}
-          </tbody>
-        </table>
-      </Card>
+          </ul>
+        )}
+      </section>
     </div>
   );
 }
