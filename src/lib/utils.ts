@@ -220,7 +220,8 @@ export function formatDimensions(
   heightM: number,
 ): string {
   if (!lengthM && !widthM && !heightM) return "—";
-  return `${widthM || "?"} × ${lengthM || "?"} × ${heightM || "?"} m`;
+  // Uvek: dužina × širina × visina
+  return `${lengthM || "?"} × ${widthM || "?"} × ${heightM || "?"} m`;
 }
 
 export const EXPENSE_CATEGORIES = [

@@ -365,7 +365,7 @@ export async function loadDashboardData(): Promise<DashboardData> {
     wr.count += 1;
     wr.revenue += rev;
     byWidth.set(wk, wr);
-    const sl = `${p.widthM}×${p.lengthM}×${p.heightM}`;
+    const sl = `${p.lengthM}×${p.widthM}×${p.heightM}`;
     const sr = bySize.get(sl) ?? { label: sl, count: 0, revenue: 0 };
     sr.count += 1;
     sr.revenue += rev;
