@@ -3,7 +3,11 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
 
+/** GitHub Pages: /ime-repozitorijuma/  | lokalno ili custom domain: / */
+const base = process.env.BASE_PATH || "/";
+
 export default defineConfig({
+  base,
   plugins: [
     react(),
     tailwindcss(),
@@ -14,12 +18,13 @@ export default defineConfig({
         name: "FirmaRačun",
         short_name: "FirmaRačun",
         description:
-          "Praćenje troškova, radnih sati i čeličnih hala — offline na telefonu",
+          "Praćenje troškova, radnih sati i čeličnih hala — radi u browseru i offline",
         theme_color: "#0f766e",
         background_color: "#eef2f4",
         display: "standalone",
         orientation: "portrait",
-        start_url: "/",
+        start_url: ".",
+        scope: ".",
         lang: "sr",
         icons: [
           {
@@ -42,7 +47,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
-        navigateFallback: "/index.html",
+        navigateFallback: "index.html",
       },
     }),
   ],

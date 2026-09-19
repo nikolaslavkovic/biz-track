@@ -54,7 +54,7 @@ export default function App() {
       <footer
         className="hidden border-t border-[var(--line)] py-4 text-center text-xs text-[var(--muted)] md:block"
       >
-        FirmaRačun · podaci ostaju na ovom uređaju · radi offline
+        FirmaRačun · podaci se čuvaju u ovom browseru · radi i offline
       </footer>
     </div>
   );

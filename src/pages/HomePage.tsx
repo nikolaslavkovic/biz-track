@@ -32,14 +32,14 @@ export function HomePage({ data }: { data: DashboardData }) {
         />
         <div className="relative">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-teal-200/90">
-            FirmaRačun · offline
+            FirmaRačun · web
           </p>
           <h1 className="mt-2 max-w-2xl font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight sm:text-4xl">
-            Pregled firme na telefonu
+            Pregled firme
           </h1>
           <p className="mt-3 max-w-xl text-sm text-stone-300">
-            Podaci se čuvaju u browseru na ovom uređaju. Radi i bez interneta
-            posle prvog otvaranja.
+            Unosi se pamte u ovom browseru (nema posebne baze za podesiti). Radi
+            i offline posle prvog otvaranja.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
             <Link to="/troskovi">
