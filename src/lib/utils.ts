@@ -14,6 +14,22 @@ export function formatMoney(value: number, currency: SaleCurrency | "RSD" = "RSD
   }).format(value || 0);
 }
 
+/** Kraći prikaz za male kartice na telefonu (bez „RSD“) */
+export function formatCompactRsd(value: number): string {
+  const n = value || 0;
+  const abs = Math.abs(n);
+  if (abs >= 1_000_000) {
+    return `${(n / 1_000_000).toLocaleString("sr-RS", {
+      maximumFractionDigits: 1,
+      minimumFractionDigits: 0,
+    })}m`;
+  }
+  if (abs >= 10_000) {
+    return `${Math.round(n / 1000).toLocaleString("sr-RS")}k`;
+  }
+  return n.toLocaleString("sr-RS", { maximumFractionDigits: 0 });
+}
+
 export function toRsd(
   amount: number,
   currency: string | null | undefined,

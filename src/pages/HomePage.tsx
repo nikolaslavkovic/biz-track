@@ -7,7 +7,7 @@ import {
   formatDate,
   formatDimensions,
   formatHours,
-  formatMoney,
+  formatCompactRsd,
   formatSalePrice,
   cn,
 } from "../lib/utils";
@@ -91,18 +91,18 @@ export function HomePage({ data }: { data: DashboardData }) {
       <section className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
         <MiniStat
           label="Prodaja"
-          value={formatMoney(summary.revenue)}
+          value={formatCompactRsd(summary.revenue)}
           tone="accent"
         />
-        <MiniStat label="Troškovi" value={formatMoney(summary.totalCosts)} />
+        <MiniStat label="Troškovi" value={formatCompactRsd(summary.totalCosts)} />
         <MiniStat
           label="Neto"
-          value={formatMoney(summary.netProfit)}
+          value={formatCompactRsd(summary.netProfit)}
           tone={summary.netProfit >= 0 ? "good" : "bad"}
         />
         <MiniStat
           label="Neto / h"
-          value={formatMoney(summary.netPerHour)}
+          value={formatCompactRsd(summary.netPerHour)}
           hint={formatHours(summary.totalHours)}
           tone={summary.netPerHour >= 0 ? "good" : "bad"}
         />
@@ -110,9 +110,9 @@ export function HomePage({ data }: { data: DashboardData }) {
 
       {/* Razrada troškova — jedna linija */}
       <section className="grid grid-cols-3 gap-2">
-        <MiniStat label="Materijal" value={formatMoney(summary.materialCost)} />
-        <MiniStat label="Mesečni" value={formatMoney(summary.monthlyCost)} />
-        <MiniStat label="Rad" value={formatMoney(summary.laborFromLogs)} />
+        <MiniStat label="Materijal" value={formatCompactRsd(summary.materialCost)} />
+        <MiniStat label="Mesečni" value={formatCompactRsd(summary.monthlyCost)} />
+        <MiniStat label="Rad" value={formatCompactRsd(summary.laborFromLogs)} />
       </section>
 
       <FinanceCharts series={series} />
@@ -160,7 +160,7 @@ export function HomePage({ data }: { data: DashboardData }) {
                   </p>
                   <p className="text-[10px] text-[var(--muted)]">{formatDate(e.date)}</p>
                 </div>
-                <p className="shrink-0 text-sm font-semibold">{formatMoney(e.amount)}</p>
+                <p className="shrink-0 text-sm font-semibold">{formatCompactRsd(e.amount)}</p>
               </li>
             ))}
           </ul>
