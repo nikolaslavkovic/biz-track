@@ -9,6 +9,7 @@ import {
 import {
   formatWeekRange,
   monthKey,
+  projectRate,
   toRsd,
   weekEndISO,
   weekStartISO,
@@ -130,7 +131,8 @@ function totalsFor(
   eurToRsd: number,
 ): Omit<OverviewSlice, "series"> {
   const prodaja = projects.reduce(
-    (s, p) => s + toRsd(p.revenue, p.revenueCurrency, eurToRsd),
+    (s, p) =>
+      s + toRsd(p.revenue, p.revenueCurrency, projectRate(p, eurToRsd)),
     0,
   );
   const troskovi = expenseTroskovi(expenses);
@@ -348,7 +350,11 @@ export async function loadDashboardData(): Promise<DashboardData> {
   >();
   for (const p of projects) {
     if (!p.widthM) continue;
-    const rev = toRsd(p.revenue, p.revenueCurrency, eurToRsd);
+    const rev = toRsd(
+      p.revenue,
+      p.revenueCurrency,
+      projectRate(p, eurToRsd),
+    );
     const wk = String(p.widthM);
     const wr = byWidth.get(wk) ?? {
       width: p.widthM,

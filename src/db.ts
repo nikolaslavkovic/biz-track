@@ -16,6 +16,8 @@ export type Project = {
   status: ProjectStatus;
   revenue: number;
   revenueCurrency: SaleCurrency;
+  /** Kurs EUR→RSD zaključan u trenutku unosa — ne menja se kad se menja globalni kurs */
+  eurRateAtSale: number;
   lengthM: number;
   widthM: number;
   heightM: number;
@@ -72,6 +74,27 @@ class FirmaDB extends Dexie {
       expenses: "++id, date, category, projectId",
       settings: "key",
     });
+    this.version(2)
+      .stores({
+        projects: "++id, startDate, status, widthM, createdAt",
+        workers: "++id, name, active",
+        workLogs: "++id, workerId, date",
+        expenses: "++id, date, category, projectId",
+        settings: "key",
+      })
+      .upgrade(async (tx) => {
+        const row = await tx.table("settings").get("eur_to_rsd");
+        const rate = Number(row?.value);
+        const fallback = Number.isFinite(rate) && rate > 0 ? rate : 117;
+        await tx
+          .table("projects")
+          .toCollection()
+          .modify((p: Project) => {
+            if (p.eurRateAtSale == null || !(p.eurRateAtSale > 0)) {
+              p.eurRateAtSale = fallback;
+            }
+          });
+      });
   }
 }
 

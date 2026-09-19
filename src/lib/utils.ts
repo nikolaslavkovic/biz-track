@@ -30,6 +30,14 @@ export function formatCompactRsd(value: number): string {
   return n.toLocaleString("sr-RS", { maximumFractionDigits: 0 });
 }
 
+export function projectRate(
+  project: { eurRateAtSale?: number | null },
+  fallback: number,
+): number {
+  const r = Number(project.eurRateAtSale);
+  return Number.isFinite(r) && r > 0 ? r : fallback;
+}
+
 export function toRsd(
   amount: number,
   currency: string | null | undefined,
@@ -48,9 +56,40 @@ export function formatSalePrice(
   const cur = currency === "EUR" ? "EUR" : "RSD";
   const main = formatMoney(amount, cur);
   if (cur === "EUR") {
-    return `${main} ≈ ${formatMoney(toRsd(amount, "EUR", eurToRsd), "RSD")}`;
+    return `${main} ≈ ${formatMoney(toRsd(amount, "EUR", eurToRsd), "RSD")} (kurs ${eurToRsd})`;
   }
   return main;
+}
+
+/** Boja hale po širini + krovu (1 / 2 vode) */
+export function hallColor(widthM: number, roofType: string): {
+  bg: string;
+  border: string;
+  text: string;
+  chip: string;
+} {
+  const palette = [
+    { bg: "#ecfdf5", border: "#0f766e", text: "#134e4a", chip: "#0f766e" },
+    { bg: "#eff6ff", border: "#1d4e89", text: "#1e3a5f", chip: "#1d4e89" },
+    { bg: "#fff7ed", border: "#c2410c", text: "#7c2d12", chip: "#c2410c" },
+    { bg: "#faf5ff", border: "#7e22ce", text: "#581c87", chip: "#7e22ce" },
+    { bg: "#f0fdfa", border: "#0d9488", text: "#115e59", chip: "#0d9488" },
+    { bg: "#fef2f2", border: "#b91c1c", text: "#7f1d1d", chip: "#b91c1c" },
+    { bg: "#f8fafc", border: "#475569", text: "#1e293b", chip: "#475569" },
+    { bg: "#fefce8", border: "#a16207", text: "#713f12", chip: "#a16207" },
+  ];
+  const idx = Math.abs(Math.round(widthM * 10)) % palette.length;
+  const base = palette[idx]!;
+  // jednu vodu = isprekidana / blaži ton; dve vode = punija boja
+  if (roofType === "jedna_voda") {
+    return {
+      bg: base.bg,
+      border: base.border,
+      text: base.text,
+      chip: base.chip,
+    };
+  }
+  return base;
 }
 
 export function formatHours(value: number): string {
