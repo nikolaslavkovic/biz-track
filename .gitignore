@@ -12,3 +12,4 @@ android/.gradle
 android/**/build
 *.apk
 .capacitor
+FirmaRacun-lokalno.zip
