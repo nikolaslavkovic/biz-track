@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { FinanceCharts, HallCharts } from "../components/Charts";
-import { Button, Card, StatCard } from "../components/ui";
+import { Button, Card } from "../components/ui";
 import type { DashboardData } from "../lib/data";
 import {
   EXPENSE_CATEGORIES,
@@ -9,7 +9,48 @@ import {
   formatHours,
   formatMoney,
   formatSalePrice,
+  cn,
 } from "../lib/utils";
+
+function MiniStat({
+  label,
+  value,
+  hint,
+  tone = "default",
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  tone?: "default" | "good" | "bad" | "accent";
+}) {
+  const toneClass =
+    tone === "good"
+      ? "text-[var(--good)]"
+      : tone === "bad"
+        ? "text-[var(--danger)]"
+        : tone === "accent"
+          ? "text-[var(--accent)]"
+          : "text-[var(--ink)]";
+
+  return (
+    <div className="min-w-0 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-2.5 py-2 sm:px-3 sm:py-3">
+      <p className="truncate text-[10px] font-medium uppercase tracking-wide text-[var(--muted)] sm:text-xs">
+        {label}
+      </p>
+      <p
+        className={cn(
+          "mt-0.5 break-words font-[family-name:var(--font-display)] text-base font-semibold leading-tight sm:text-xl",
+          toneClass,
+        )}
+      >
+        {value}
+      </p>
+      {hint ? (
+        <p className="mt-0.5 truncate text-[10px] text-[var(--muted)] sm:text-xs">{hint}</p>
+      ) : null}
+    </div>
+  );
+}
 
 export function HomePage({ data }: { data: DashboardData }) {
   const { summary, series, hallStats, projects, expenses, workLogs, workers, eurToRsd } =
@@ -21,107 +62,82 @@ export function HomePage({ data }: { data: DashboardData }) {
     EXPENSE_CATEGORIES.find((c) => c.value === value)?.label ?? value;
 
   return (
-    <div className="w-full min-w-0 max-w-full space-y-6 sm:space-y-8">
-      <section className="relative overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--ink)] px-4 py-6 text-[var(--bg)] sm:px-8 sm:py-8">
-        <div
-          className="pointer-events-none absolute inset-0 opacity-40"
-          style={{
-            backgroundImage:
-              "linear-gradient(120deg, transparent 0%, rgba(15,118,110,0.45) 45%, transparent 70%), radial-gradient(circle at 80% 20%, rgba(29,78,137,0.4), transparent 40%)",
-          }}
-        />
-        <div className="relative">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-teal-200/90">
-            FirmaRačun · web
-          </p>
-          <h1 className="mt-2 max-w-2xl font-[family-name:var(--font-display)] text-3xl font-bold tracking-tight sm:text-4xl">
-            Pregled firme
+    <div className="w-full min-w-0 max-w-full space-y-3 sm:space-y-6">
+      {/* Kompaktan header + brzi linkovi */}
+      <section className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <h1 className="font-[family-name:var(--font-display)] text-xl font-bold tracking-tight sm:text-3xl">
+            Pregled
           </h1>
-          <p className="mt-3 max-w-xl text-sm text-stone-300">
-            Unosi se pamte u ovom browseru (nema posebne baze za podesiti). Radi
-            i offline posle prvog otvaranja.
+          <p className="text-xs text-[var(--muted)] sm:text-sm">
+            Kurs 1 EUR = {eurToRsd} RSD
           </p>
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Link to="/troskovi">
-              <Button className="bg-teal-600 text-white hover:bg-teal-500">
-                Dodaj trošak
-              </Button>
-            </Link>
-            <Link to="/radnici">
-              <Button
-                variant="secondary"
-                className="border-stone-600 bg-stone-800 text-stone-100 hover:bg-stone-700"
-              >
-                Nedeljni sati
-              </Button>
-            </Link>
-            <Link to="/projekti">
-              <Button
-                variant="outline"
-                className="border-stone-500 text-stone-100 hover:bg-stone-800"
-              >
-                Hale
-              </Button>
-            </Link>
-          </div>
+        </div>
+        <div className="flex shrink-0 gap-1.5">
+          <Link to="/troskovi">
+            <Button size="sm" className="px-2.5 text-xs sm:px-3 sm:text-sm">
+              + Trošak
+            </Button>
+          </Link>
+          <Link to="/radnici">
+            <Button size="sm" variant="secondary" className="px-2.5 text-xs sm:px-3 sm:text-sm">
+              Sati
+            </Button>
+          </Link>
         </div>
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="Prodajna cena (RSD)"
+      {/* Glavne brojke — 2×2 na telefonu */}
+      <section className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
+        <MiniStat
+          label="Prodaja"
           value={formatMoney(summary.revenue)}
-          hint={`Kurs 1 EUR = ${eurToRsd} RSD`}
           tone="accent"
         />
-        <StatCard label="Ukupni troškovi" value={formatMoney(summary.totalCosts)} />
-        <StatCard
+        <MiniStat label="Troškovi" value={formatMoney(summary.totalCosts)} />
+        <MiniStat
           label="Neto"
           value={formatMoney(summary.netProfit)}
           tone={summary.netProfit >= 0 ? "good" : "bad"}
         />
-        <StatCard
-          label="Neto po satu"
+        <MiniStat
+          label="Neto / h"
           value={formatMoney(summary.netPerHour)}
           hint={formatHours(summary.totalHours)}
           tone={summary.netPerHour >= 0 ? "good" : "bad"}
         />
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-3">
-        <Card>
-          <p className="text-xs uppercase tracking-wide text-[var(--muted)]">Materijal</p>
-          <p className="mt-1 text-xl font-semibold">{formatMoney(summary.materialCost)}</p>
-        </Card>
-        <Card>
-          <p className="text-xs uppercase tracking-wide text-[var(--muted)]">Mesečni</p>
-          <p className="mt-1 text-xl font-semibold">{formatMoney(summary.monthlyCost)}</p>
-        </Card>
-        <Card>
-          <p className="text-xs uppercase tracking-wide text-[var(--muted)]">Trošak rada</p>
-          <p className="mt-1 text-xl font-semibold">{formatMoney(summary.laborFromLogs)}</p>
-        </Card>
+      {/* Razrada troškova — jedna linija */}
+      <section className="grid grid-cols-3 gap-2">
+        <MiniStat label="Materijal" value={formatMoney(summary.materialCost)} />
+        <MiniStat label="Mesečni" value={formatMoney(summary.monthlyCost)} />
+        <MiniStat label="Rad" value={formatMoney(summary.laborFromLogs)} />
       </section>
 
       <FinanceCharts series={series} />
       <HallCharts byWidth={hallStats.byWidth} bySize={hallStats.bySize} />
 
-      <section className="grid gap-4 lg:grid-cols-3">
-        <Card>
-          <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg font-semibold">
-            Aktivne hale
-          </h2>
+      {/* Liste — kraće, manje razmaka */}
+      <section className="grid gap-2 sm:gap-3 lg:grid-cols-3">
+        <Card className="!p-3">
+          <h2 className="mb-2 text-sm font-semibold">Aktivne hale</h2>
           {active.length === 0 ? (
-            <p className="text-sm text-[var(--muted)]">Nema aktivnih.</p>
+            <p className="text-xs text-[var(--muted)]">Nema aktivnih.</p>
           ) : (
-            <ul className="space-y-3">
-              {active.map((p) => (
-                <li key={p.id} className="border-b border-[var(--line)] pb-3 last:border-0">
-                  <p className="font-medium">{p.name}</p>
-                  <p className="text-xs text-[var(--muted)]">
-                    {formatDimensions(p.lengthM, p.widthM, p.heightM)}
-                  </p>
-                  <p className="text-sm text-[var(--accent)]">
+            <ul className="space-y-2">
+              {active.slice(0, 4).map((p) => (
+                <li
+                  key={p.id}
+                  className="flex items-baseline justify-between gap-2 border-b border-[var(--line)] pb-2 last:border-0 last:pb-0"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{p.name}</p>
+                    <p className="text-[10px] text-[var(--muted)]">
+                      {formatDimensions(p.lengthM, p.widthM, p.heightM)}
+                    </p>
+                  </div>
+                  <p className="shrink-0 text-xs font-medium text-[var(--accent)]">
                     {formatSalePrice(p.revenue, p.revenueCurrency, eurToRsd)}
                   </p>
                 </li>
@@ -129,34 +145,40 @@ export function HomePage({ data }: { data: DashboardData }) {
             </ul>
           )}
         </Card>
-        <Card>
-          <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg font-semibold">
-            Poslednji troškovi
-          </h2>
-          <ul className="space-y-3">
-            {expenses.slice(0, 6).map((e) => (
-              <li key={e.id} className="flex justify-between gap-2 border-b border-[var(--line)] pb-3 last:border-0">
-                <div>
-                  <p className="font-medium">{e.subcategory || categoryLabel(e.category)}</p>
-                  <p className="text-xs text-[var(--muted)]">{formatDate(e.date)}</p>
+
+        <Card className="!p-3">
+          <h2 className="mb-2 text-sm font-semibold">Poslednji troškovi</h2>
+          <ul className="space-y-2">
+            {expenses.slice(0, 4).map((e) => (
+              <li
+                key={e.id}
+                className="flex justify-between gap-2 border-b border-[var(--line)] pb-2 last:border-0 last:pb-0"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">
+                    {e.subcategory || categoryLabel(e.category)}
+                  </p>
+                  <p className="text-[10px] text-[var(--muted)]">{formatDate(e.date)}</p>
                 </div>
-                <p className="font-semibold">{formatMoney(e.amount)}</p>
+                <p className="shrink-0 text-sm font-semibold">{formatMoney(e.amount)}</p>
               </li>
             ))}
           </ul>
         </Card>
-        <Card>
-          <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg font-semibold">
-            Poslednji sati
-          </h2>
-          <ul className="space-y-3">
-            {workLogs.slice(0, 6).map((w) => (
-              <li key={w.id} className="flex justify-between gap-2 border-b border-[var(--line)] pb-3 last:border-0">
-                <div>
-                  <p className="font-medium">{workerName(w.workerId)}</p>
-                  <p className="text-xs text-[var(--muted)]">{formatDate(w.date)}</p>
+
+        <Card className="!p-3">
+          <h2 className="mb-2 text-sm font-semibold">Poslednji sati</h2>
+          <ul className="space-y-2">
+            {workLogs.slice(0, 4).map((w) => (
+              <li
+                key={w.id}
+                className="flex justify-between gap-2 border-b border-[var(--line)] pb-2 last:border-0 last:pb-0"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{workerName(w.workerId)}</p>
+                  <p className="text-[10px] text-[var(--muted)]">{formatDate(w.date)}</p>
                 </div>
-                <p className="font-semibold">{formatHours(w.hours)}</p>
+                <p className="shrink-0 text-sm font-semibold">{formatHours(w.hours)}</p>
               </li>
             ))}
           </ul>

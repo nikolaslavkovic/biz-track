@@ -33,7 +33,7 @@ export default function App() {
   return (
     <div className="flex min-h-screen flex-col">
       <AppNav />
-      <main className="mx-auto w-full min-w-0 max-w-6xl flex-1 overflow-x-hidden px-3 py-4 pb-28 sm:px-6 sm:py-8">
+      <main className="mx-auto w-full min-w-0 max-w-6xl flex-1 overflow-x-hidden px-3 py-3 pb-28 sm:px-6 sm:py-8">
         <Routes>
           <Route path="/" element={<HomePage data={data} />} />
           <Route

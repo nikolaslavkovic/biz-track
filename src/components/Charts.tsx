@@ -127,15 +127,15 @@ export function FinanceCharts({
   const margin = narrow
     ? { top: 2, right: 2, left: -8, bottom: 0 }
     : { top: 6, right: 8, left: 0, bottom: 0 };
-  const chartH = narrow ? 190 : 260;
+  const chartH = narrow ? 150 : 240;
 
   return (
-    <div className="grid w-full min-w-0 max-w-full gap-3 sm:gap-4 lg:grid-cols-2">
-      <Card className="w-full max-w-full overflow-hidden !p-3 sm:!p-5">
+    <div className="grid w-full min-w-0 max-w-full gap-2 sm:gap-4 lg:grid-cols-2">
+      <Card className="w-full max-w-full overflow-hidden !p-2.5 sm:!p-5">
         <h3 className="font-[family-name:var(--font-display)] text-sm font-semibold sm:text-lg">
           Zarada i troškovi
         </h3>
-        <p className="mb-2 text-xs text-[var(--muted)] sm:text-sm">Sve u dinarima</p>
+        <p className="mb-1.5 text-[10px] text-[var(--muted)] sm:mb-3 sm:text-sm">Sve u dinarima</p>
         <ChartFrame height={chartH}>
           {({ width, height }) => (
             <AreaChart width={width} height={height} data={series} margin={margin}>
@@ -192,11 +192,11 @@ export function FinanceCharts({
         </ChartFrame>
       </Card>
 
-      <Card className="w-full max-w-full overflow-hidden !p-3 sm:!p-5">
+      <Card className="w-full max-w-full overflow-hidden !p-2.5 sm:!p-5">
         <h3 className="font-[family-name:var(--font-display)] text-sm font-semibold sm:text-lg">
           Neto po mesecu
         </h3>
-        <p className="mb-2 text-xs text-[var(--muted)] sm:text-sm">Zarada − troškovi</p>
+        <p className="mb-1.5 text-[10px] text-[var(--muted)] sm:mb-3 sm:text-sm">Zarada − troškovi</p>
         <ChartFrame height={chartH}>
           {({ width, height }) => (
             <BarChart width={width} height={height} data={series} margin={margin}>
@@ -243,7 +243,7 @@ export function HallCharts({
   const margin = narrow
     ? { top: 2, right: 2, left: -8, bottom: 0 }
     : { top: 6, right: 8, left: 0, bottom: 0 };
-  const chartH = narrow ? 190 : 260;
+  const chartH = narrow ? 150 : 240;
 
   if (!byWidth.length && !bySize.length) {
     return (
@@ -259,12 +259,12 @@ export function HallCharts({
   }
 
   return (
-    <div className="grid w-full min-w-0 max-w-full gap-3 sm:gap-4 lg:grid-cols-2">
-      <Card className="w-full max-w-full overflow-hidden !p-3 sm:!p-5">
+    <div className="grid w-full min-w-0 max-w-full gap-2 sm:gap-4 lg:grid-cols-2">
+      <Card className="w-full max-w-full overflow-hidden !p-2.5 sm:!p-5">
         <h3 className="font-[family-name:var(--font-display)] text-sm font-semibold sm:text-lg">
           Hale po širini
         </h3>
-        <div className="mt-2">
+        <div className="mt-1 sm:mt-2">
           <ChartFrame height={chartH}>
             {({ width, height }) => (
               <BarChart width={width} height={height} data={byWidth} margin={margin}>
