@@ -10,8 +10,28 @@ import {
   formatWeekRange,
   monthKey,
   toRsd,
+  weekEndISO,
   weekStartISO,
 } from "./utils";
+
+export type PeriodMode = "ukupno" | "nedeljno" | "mesecno" | "godisnje";
+
+export type OverviewPoint = {
+  key: string;
+  label: string;
+  prodaja: number;
+  troskovi: number;
+  radnici: number;
+  neto: number;
+};
+
+export type OverviewSlice = {
+  prodaja: number;
+  troskovi: number;
+  radnici: number;
+  neto: number;
+  series: OverviewPoint[];
+};
 
 export type DashboardData = {
   projects: Project[];
@@ -60,6 +80,215 @@ export type DashboardData = {
   }>;
 };
 
+function yearKey(date: string): string {
+  return date.slice(0, 4);
+}
+
+function projectDate(p: Project): string {
+  return (p.endDate || p.startDate || "").slice(0, 10);
+}
+
+function laborCost(
+  workLogs: WorkLog[],
+  workerMap: Map<number, Worker>,
+  expenses: Expense[],
+): number {
+  const plata = expenses
+    .filter((e) => e.category === "plata")
+    .reduce((s, e) => s + e.amount, 0);
+  if (plata > 0) return plata;
+  return workLogs.reduce((s, log) => {
+    const w = workerMap.get(log.workerId);
+    return s + log.hours * (w?.hourlyRate || 0);
+  }, 0);
+}
+
+function expenseTroskovi(expenses: Expense[]): number {
+  return expenses
+    .filter((e) => e.category !== "plata")
+    .reduce((s, e) => s + e.amount, 0);
+}
+
+function filterByRange<T extends { date?: string } | Project>(
+  items: T[],
+  start: string | null,
+  end: string | null,
+  getDate: (item: T) => string,
+): T[] {
+  if (!start || !end) return items;
+  return items.filter((item) => {
+    const d = getDate(item);
+    return d >= start && d <= end;
+  });
+}
+
+function totalsFor(
+  projects: Project[],
+  expenses: Expense[],
+  workLogs: WorkLog[],
+  workerMap: Map<number, Worker>,
+  eurToRsd: number,
+): Omit<OverviewSlice, "series"> {
+  const prodaja = projects.reduce(
+    (s, p) => s + toRsd(p.revenue, p.revenueCurrency, eurToRsd),
+    0,
+  );
+  const troskovi = expenseTroskovi(expenses);
+  const radnici = laborCost(workLogs, workerMap, expenses);
+  return {
+    prodaja,
+    troskovi,
+    radnici,
+    neto: prodaja - troskovi - radnici,
+  };
+}
+
+function monthBuckets(count: number): string[] {
+  const now = new Date();
+  const keys: string[] = [];
+  for (let i = count - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    keys.push(
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
+    );
+  }
+  return keys;
+}
+
+function weekBuckets(count: number): string[] {
+  const keys: string[] = [];
+  const current = weekStartISO();
+  for (let i = count - 1; i >= 0; i--) {
+    const d = new Date(current + "T12:00:00");
+    d.setDate(d.getDate() - i * 7);
+    keys.push(weekStartISO(d));
+  }
+  return keys;
+}
+
+function yearBuckets(count: number): string[] {
+  const y = new Date().getFullYear();
+  const keys: string[] = [];
+  for (let i = count - 1; i >= 0; i--) keys.push(String(y - i));
+  return keys;
+}
+
+function labelForBucket(mode: PeriodMode, key: string): string {
+  if (mode === "nedeljno") {
+    const end = weekEndISO(key);
+    const a = key.slice(5).replace("-", ".");
+    const b = end.slice(5).replace("-", ".");
+    return `${a}–${b}`;
+  }
+  if (mode === "godisnje") return key;
+  // mesecno / ukupno chart
+  const [y, m] = key.split("-").map(Number);
+  return new Intl.DateTimeFormat("sr-RS", {
+    month: "short",
+    year: "2-digit",
+  }).format(new Date(y, (m || 1) - 1, 1));
+}
+
+function matchBucket(mode: PeriodMode, date: string, key: string): boolean {
+  if (mode === "nedeljno") {
+    return weekStartISO(date) === key;
+  }
+  if (mode === "godisnje") {
+    return yearKey(date) === key;
+  }
+  return monthKey(date) === key;
+}
+
+function buildSeries(
+  mode: PeriodMode,
+  projects: Project[],
+  expenses: Expense[],
+  workLogs: WorkLog[],
+  workerMap: Map<number, Worker>,
+  eurToRsd: number,
+): OverviewPoint[] {
+  const chartMode: PeriodMode =
+    mode === "ukupno" ? "mesecno" : mode;
+  const keys =
+    chartMode === "nedeljno"
+      ? weekBuckets(12)
+      : chartMode === "godisnje"
+        ? yearBuckets(5)
+        : monthBuckets(12);
+
+  return keys.map((key) => {
+    const bucketProjects = projects.filter((p) =>
+      matchBucket(chartMode, projectDate(p), key),
+    );
+    const bucketExpenses = expenses.filter((e) =>
+      matchBucket(chartMode, e.date, key),
+    );
+    const bucketLogs = workLogs.filter((w) =>
+      matchBucket(chartMode, w.date, key),
+    );
+    const t = totalsFor(
+      bucketProjects,
+      bucketExpenses,
+      bucketLogs,
+      workerMap,
+      eurToRsd,
+    );
+    return {
+      key,
+      label: labelForBucket(chartMode, key),
+      ...t,
+    };
+  });
+}
+
+export function buildOverview(
+  data: DashboardData,
+  mode: PeriodMode,
+): OverviewSlice {
+  const workerMap = new Map(data.workers.map((w) => [w.id!, w]));
+  const now = new Date();
+  let start: string | null = null;
+  let end: string | null = null;
+
+  if (mode === "nedeljno") {
+    start = weekStartISO();
+    end = weekEndISO(start);
+  } else if (mode === "mesecno") {
+    const y = now.getFullYear();
+    const m = String(now.getMonth() + 1).padStart(2, "0");
+    start = `${y}-${m}-01`;
+    end = new Date(y, now.getMonth() + 1, 0).toISOString().slice(0, 10);
+  } else if (mode === "godisnje") {
+    const y = now.getFullYear();
+    start = `${y}-01-01`;
+    end = `${y}-12-31`;
+  }
+
+  const projects = filterByRange(data.projects, start, end, projectDate);
+  const expenses = filterByRange(data.expenses, start, end, (e) => e.date);
+  const workLogs = filterByRange(data.workLogs, start, end, (w) => w.date);
+
+  const totals = totalsFor(
+    projects,
+    expenses,
+    workLogs,
+    workerMap,
+    data.eurToRsd,
+  );
+
+  return {
+    ...totals,
+    series: buildSeries(
+      mode,
+      data.projects,
+      data.expenses,
+      data.workLogs,
+      workerMap,
+      data.eurToRsd,
+    ),
+  };
+}
+
 export async function loadDashboardData(): Promise<DashboardData> {
   const [projects, workers, workLogs, expenses, eurToRsd] = await Promise.all([
     db.projects.orderBy("startDate").reverse().toArray(),
@@ -70,22 +299,35 @@ export async function loadDashboardData(): Promise<DashboardData> {
   ]);
 
   const workerMap = new Map(workers.map((w) => [w.id!, w]));
-
-  const revenue = projects.reduce(
-    (s, p) => s + toRsd(p.revenue, p.revenueCurrency, eurToRsd),
-    0,
+  const overview = buildOverview(
+    {
+      projects,
+      workers,
+      workLogs,
+      expenses,
+      eurToRsd,
+      summary: {
+        revenue: 0,
+        totalCosts: 0,
+        netProfit: 0,
+        totalHours: 0,
+        netPerHour: 0,
+        materialCost: 0,
+        monthlyCost: 0,
+        laborFromLogs: 0,
+      },
+      series: [],
+      hallStats: { byWidth: [], bySize: [] },
+      weekly: [],
+    },
+    "ukupno",
   );
+
   const materialCost = expenses
     .filter((e) => e.category === "materijal")
     .reduce((s, e) => s + e.amount, 0);
   const monthlyCost = expenses
     .filter((e) => e.category === "mesecni")
-    .reduce((s, e) => s + e.amount, 0);
-  const payrollExpenses = expenses
-    .filter((e) => e.category === "plata")
-    .reduce((s, e) => s + e.amount, 0);
-  const otherCost = expenses
-    .filter((e) => e.category === "ostalo")
     .reduce((s, e) => s + e.amount, 0);
 
   let totalHours = 0;
@@ -95,51 +337,6 @@ export async function loadDashboardData(): Promise<DashboardData> {
     totalHours += log.hours;
     laborFromLogs += log.hours * (w?.hourlyRate || 0);
   }
-
-  const expensesTotal = expenses.reduce((s, e) => s + e.amount, 0);
-  const totalCosts =
-    payrollExpenses > 0
-      ? expensesTotal
-      : materialCost + monthlyCost + otherCost + laborFromLogs;
-  const netProfit = revenue - totalCosts;
-  const netPerHour = totalHours > 0 ? netProfit / totalHours : 0;
-
-  const now = new Date();
-  const keys: string[] = [];
-  for (let i = 7; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    keys.push(
-      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`,
-    );
-  }
-
-  const series = keys.map((key) => {
-    const monthExpenses = expenses.filter((e) => monthKey(e.date) === key);
-    const monthWork = workLogs.filter((w) => monthKey(w.date) === key);
-    const monthProjects = projects.filter((p) => {
-      const end = p.endDate ?? p.startDate;
-      return monthKey(p.startDate) === key || monthKey(end) === key;
-    });
-    const troskovi = monthExpenses.reduce((s, e) => s + e.amount, 0);
-    const plata = monthExpenses
-      .filter((e) => e.category === "plata")
-      .reduce((s, e) => s + e.amount, 0);
-    const rad = monthWork.reduce((s, log) => {
-      const w = workerMap.get(log.workerId);
-      return s + log.hours * (w?.hourlyRate || 0);
-    }, 0);
-    const zarada = monthProjects.reduce(
-      (s, p) => s + toRsd(p.revenue, p.revenueCurrency, eurToRsd),
-      0,
-    );
-    const costs = plata > 0 ? troskovi : troskovi + rad;
-    const [y, m] = key.split("-").map(Number);
-    const label = new Intl.DateTimeFormat("sr-RS", {
-      month: "short",
-      year: "2-digit",
-    }).format(new Date(y, m - 1, 1));
-    return { month: key, label, zarada, troskovi: costs, neto: zarada - costs };
-  });
 
   const byWidth = new Map<
     string,
@@ -210,16 +407,22 @@ export async function loadDashboardData(): Promise<DashboardData> {
     expenses,
     eurToRsd,
     summary: {
-      revenue,
-      totalCosts,
-      netProfit,
+      revenue: overview.prodaja,
+      totalCosts: overview.troskovi + overview.radnici,
+      netProfit: overview.neto,
       totalHours,
-      netPerHour,
+      netPerHour: totalHours > 0 ? overview.neto / totalHours : 0,
       materialCost,
       monthlyCost,
       laborFromLogs,
     },
-    series,
+    series: overview.series.map((p) => ({
+      month: p.key,
+      label: p.label,
+      zarada: p.prodaja,
+      troskovi: p.troskovi + p.radnici,
+      neto: p.neto,
+    })),
     hallStats: {
       byWidth: [...byWidth.values()].sort((a, b) => a.width - b.width),
       bySize: [...bySize.values()]
