@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Area,
   AreaChart,
@@ -6,7 +6,6 @@ import {
   BarChart,
   CartesianGrid,
   Legend,
-  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
@@ -25,8 +24,8 @@ function MoneyTooltip({
 }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="max-w-[min(100vw-2rem,16rem)] rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm shadow-md">
-      <p className="mb-1 font-medium">{label}</p>
+    <div className="rounded-lg border border-[var(--line)] bg-[var(--surface)] px-2.5 py-1.5 text-xs shadow-md">
+      <p className="mb-0.5 font-medium">{label}</p>
       {payload.map((p) => (
         <p key={p.name} style={{ color: p.color }}>
           {p.name}: {formatMoney(p.value)}
@@ -47,8 +46,8 @@ function CountTooltip({
 }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="max-w-[min(100vw-2rem,16rem)] rounded-lg border border-[var(--line)] bg-[var(--surface)] px-3 py-2 text-sm shadow-md">
-      <p className="mb-1 font-medium">{label}</p>
+    <div className="rounded-lg border border-[var(--line)] bg-[var(--surface)] px-2.5 py-1.5 text-xs shadow-md">
+      <p className="mb-0.5 font-medium">{label}</p>
       {payload.map((p) => (
         <p key={p.name} style={{ color: p.color }}>
           {p.name}: {p.value}
@@ -58,16 +57,57 @@ function CountTooltip({
   );
 }
 
-function useIsNarrow(breakpoint = 480) {
+/** Meri stvarnu širinu kontejnera — pouzdanije od ResponsiveContainer na telefonu */
+function ChartFrame({
+  height = 200,
+  children,
+}: {
+  height?: number;
+  children: (size: { width: number; height: number }) => ReactNode;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(0);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const measure = () => {
+      const w = Math.floor(el.getBoundingClientRect().width);
+      if (w > 0) setWidth(w);
+    };
+
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    window.addEventListener("orientationchange", measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("orientationchange", measure);
+    };
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      className="w-full max-w-full overflow-hidden"
+      style={{ height }}
+    >
+      {width > 0 ? children({ width, height }) : null}
+    </div>
+  );
+}
+
+function useNarrow() {
   const [narrow, setNarrow] = useState(
-    () => typeof window !== "undefined" && window.innerWidth < breakpoint,
+    () => typeof window !== "undefined" && window.innerWidth < 640,
   );
   useEffect(() => {
-    const onResize = () => setNarrow(window.innerWidth < breakpoint);
-    onResize();
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, [breakpoint]);
+    const sync = () => setNarrow(window.innerWidth < 640);
+    sync();
+    window.addEventListener("resize", sync);
+    return () => window.removeEventListener("resize", sync);
+  }, []);
   return narrow;
 }
 
@@ -81,109 +121,110 @@ export function FinanceCharts({
     neto: number;
   }>;
 }) {
-  const [mounted, setMounted] = useState(false);
-  const narrow = useIsNarrow();
-  useEffect(() => setMounted(true), []);
-
-  const tick = { fill: "#5b6b76", fontSize: narrow ? 10 : 12 };
-  const yWidth = narrow ? 36 : 48;
+  const narrow = useNarrow();
+  const tick = { fill: "#5b6b76", fontSize: narrow ? 9 : 11 };
+  const yW = narrow ? 28 : 40;
   const margin = narrow
-    ? { top: 4, right: 4, left: 0, bottom: 0 }
-    : { top: 8, right: 12, left: 0, bottom: 0 };
+    ? { top: 2, right: 2, left: -8, bottom: 0 }
+    : { top: 6, right: 8, left: 0, bottom: 0 };
+  const chartH = narrow ? 190 : 260;
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      <Card className="min-w-0 overflow-hidden">
-        <h3 className="font-[family-name:var(--font-display)] text-base font-semibold sm:text-lg">
+    <div className="grid w-full min-w-0 max-w-full gap-3 sm:gap-4 lg:grid-cols-2">
+      <Card className="w-full max-w-full overflow-hidden !p-3 sm:!p-5">
+        <h3 className="font-[family-name:var(--font-display)] text-sm font-semibold sm:text-lg">
           Zarada i troškovi
         </h3>
-        <p className="mb-3 text-sm text-[var(--muted)]">Sve u dinarima</p>
-        <div className="h-56 w-full min-w-0 sm:h-72">
-          {mounted ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={series} margin={margin}>
-                <defs>
-                  <linearGradient id="zaradaFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#0f766e" stopOpacity={0.35} />
-                    <stop offset="95%" stopColor="#0f766e" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="trosakFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#1d4e89" stopOpacity={0.28} />
-                    <stop offset="95%" stopColor="#1d4e89" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#cfd8de" />
-                <XAxis
-                  dataKey="label"
-                  tick={tick}
-                  interval="preserveStartEnd"
-                  minTickGap={narrow ? 28 : 16}
-                />
-                <YAxis
-                  width={yWidth}
-                  tick={tick}
-                  tickFormatter={(v) => `${Math.round(Number(v) / 1000)}k`}
-                />
-                <Tooltip content={<MoneyTooltip />} />
-                <Legend
-                  wrapperStyle={{ fontSize: narrow ? 11 : 13, paddingTop: 4 }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="zarada"
-                  name="Zarada"
-                  stroke="#0f766e"
-                  fill="url(#zaradaFill)"
-                  strokeWidth={2}
-                  isAnimationActive={false}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="troskovi"
-                  name="Troškovi"
-                  stroke="#1d4e89"
-                  fill="url(#trosakFill)"
-                  strokeWidth={2}
-                  isAnimationActive={false}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          ) : null}
-        </div>
+        <p className="mb-2 text-xs text-[var(--muted)] sm:text-sm">Sve u dinarima</p>
+        <ChartFrame height={chartH}>
+          {({ width, height }) => (
+            <AreaChart width={width} height={height} data={series} margin={margin}>
+              <defs>
+                <linearGradient id="zaradaFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#0f766e" stopOpacity={0.35} />
+                  <stop offset="95%" stopColor="#0f766e" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="trosakFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#1d4e89" stopOpacity={0.28} />
+                  <stop offset="95%" stopColor="#1d4e89" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#cfd8de" />
+              <XAxis
+                dataKey="label"
+                tick={tick}
+                interval="preserveStartEnd"
+                minTickGap={narrow ? 36 : 20}
+                tickMargin={4}
+              />
+              <YAxis
+                width={yW}
+                tick={tick}
+                tickCount={narrow ? 4 : 5}
+                tickFormatter={(v) => `${Math.round(Number(v) / 1000)}k`}
+              />
+              <Tooltip content={<MoneyTooltip />} />
+              <Legend
+                verticalAlign="bottom"
+                height={24}
+                wrapperStyle={{ fontSize: narrow ? 10 : 12 }}
+              />
+              <Area
+                type="monotone"
+                dataKey="zarada"
+                name="Zarada"
+                stroke="#0f766e"
+                fill="url(#zaradaFill)"
+                strokeWidth={2}
+                isAnimationActive={false}
+              />
+              <Area
+                type="monotone"
+                dataKey="troskovi"
+                name="Troškovi"
+                stroke="#1d4e89"
+                fill="url(#trosakFill)"
+                strokeWidth={2}
+                isAnimationActive={false}
+              />
+            </AreaChart>
+          )}
+        </ChartFrame>
       </Card>
-      <Card className="min-w-0 overflow-hidden">
-        <h3 className="font-[family-name:var(--font-display)] text-base font-semibold sm:text-lg">
+
+      <Card className="w-full max-w-full overflow-hidden !p-3 sm:!p-5">
+        <h3 className="font-[family-name:var(--font-display)] text-sm font-semibold sm:text-lg">
           Neto po mesecu
         </h3>
-        <p className="mb-3 text-sm text-[var(--muted)]">Zarada − troškovi</p>
-        <div className="h-56 w-full min-w-0 sm:h-72">
-          {mounted ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={series} margin={margin}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#cfd8de" />
-                <XAxis
-                  dataKey="label"
-                  tick={tick}
-                  interval="preserveStartEnd"
-                  minTickGap={narrow ? 28 : 16}
-                />
-                <YAxis
-                  width={yWidth}
-                  tick={tick}
-                  tickFormatter={(v) => `${Math.round(Number(v) / 1000)}k`}
-                />
-                <Tooltip content={<MoneyTooltip />} />
-                <Bar
-                  dataKey="neto"
-                  name="Neto"
-                  fill="#0f766e"
-                  radius={[6, 6, 0, 0]}
-                  isAnimationActive={false}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : null}
-        </div>
+        <p className="mb-2 text-xs text-[var(--muted)] sm:text-sm">Zarada − troškovi</p>
+        <ChartFrame height={chartH}>
+          {({ width, height }) => (
+            <BarChart width={width} height={height} data={series} margin={margin}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#cfd8de" />
+              <XAxis
+                dataKey="label"
+                tick={tick}
+                interval="preserveStartEnd"
+                minTickGap={narrow ? 36 : 20}
+                tickMargin={4}
+              />
+              <YAxis
+                width={yW}
+                tick={tick}
+                tickCount={narrow ? 4 : 5}
+                tickFormatter={(v) => `${Math.round(Number(v) / 1000)}k`}
+              />
+              <Tooltip content={<MoneyTooltip />} />
+              <Bar
+                dataKey="neto"
+                name="Neto"
+                fill="#0f766e"
+                radius={[4, 4, 0, 0]}
+                isAnimationActive={false}
+              />
+            </BarChart>
+          )}
+        </ChartFrame>
       </Card>
     </div>
   );
@@ -196,20 +237,18 @@ export function HallCharts({
   byWidth: Array<{ label: string; count: number }>;
   bySize: Array<{ label: string; count: number }>;
 }) {
-  const [mounted, setMounted] = useState(false);
-  const narrow = useIsNarrow();
-  useEffect(() => setMounted(true), []);
-
-  const tick = { fill: "#5b6b76", fontSize: narrow ? 10 : 12 };
-  const yWidth = narrow ? 36 : 48;
+  const narrow = useNarrow();
+  const tick = { fill: "#5b6b76", fontSize: narrow ? 9 : 11 };
+  const yW = narrow ? 28 : 40;
   const margin = narrow
-    ? { top: 4, right: 4, left: 0, bottom: 0 }
-    : { top: 8, right: 12, left: 0, bottom: 0 };
+    ? { top: 2, right: 2, left: -8, bottom: 0 }
+    : { top: 6, right: 8, left: 0, bottom: 0 };
+  const chartH = narrow ? 190 : 260;
 
   if (!byWidth.length && !bySize.length) {
     return (
       <Card>
-        <h3 className="font-[family-name:var(--font-display)] text-base font-semibold sm:text-lg">
+        <h3 className="font-[family-name:var(--font-display)] text-sm font-semibold sm:text-lg">
           Dimenzije hala
         </h3>
         <p className="mt-2 text-sm text-[var(--muted)]">
@@ -220,75 +259,70 @@ export function HallCharts({
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
-      <Card className="min-w-0 overflow-hidden">
-        <h3 className="font-[family-name:var(--font-display)] text-base font-semibold sm:text-lg">
+    <div className="grid w-full min-w-0 max-w-full gap-3 sm:gap-4 lg:grid-cols-2">
+      <Card className="w-full max-w-full overflow-hidden !p-3 sm:!p-5">
+        <h3 className="font-[family-name:var(--font-display)] text-sm font-semibold sm:text-lg">
           Hale po širini
         </h3>
-        <div className="mt-3 h-56 w-full min-w-0 sm:h-72">
-          {mounted ? (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={byWidth} margin={margin}>
+        <div className="mt-2">
+          <ChartFrame height={chartH}>
+            {({ width, height }) => (
+              <BarChart width={width} height={height} data={byWidth} margin={margin}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#cfd8de" />
                 <XAxis dataKey="label" tick={tick} />
-                <YAxis
-                  width={yWidth}
-                  allowDecimals={false}
-                  tick={tick}
-                />
+                <YAxis width={yW} allowDecimals={false} tick={tick} tickCount={4} />
                 <Tooltip content={<CountTooltip />} />
                 <Bar
                   dataKey="count"
                   name="Broj hala"
                   fill="#1d4e89"
-                  radius={[6, 6, 0, 0]}
+                  radius={[4, 4, 0, 0]}
                   isAnimationActive={false}
                 />
               </BarChart>
-            </ResponsiveContainer>
-          ) : null}
+            )}
+          </ChartFrame>
         </div>
       </Card>
-      <Card className="min-w-0 overflow-hidden">
-        <h3 className="font-[family-name:var(--font-display)] text-base font-semibold sm:text-lg">
+
+      <Card className="w-full max-w-full overflow-hidden !p-3 sm:!p-5">
+        <h3 className="font-[family-name:var(--font-display)] text-sm font-semibold sm:text-lg">
           Najčešće dimenzije
         </h3>
-        <div className="mt-3 h-56 w-full min-w-0 sm:h-72">
-          {mounted ? (
-            <ResponsiveContainer width="100%" height="100%">
+        <div className="mt-2">
+          <ChartFrame height={chartH}>
+            {({ width, height }) => (
               <BarChart
+                width={width}
+                height={height}
                 data={bySize}
                 layout="vertical"
                 margin={{
-                  top: 4,
-                  right: narrow ? 8 : 12,
+                  top: 2,
+                  right: narrow ? 4 : 10,
                   left: 0,
                   bottom: 0,
                 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#cfd8de" />
-                <XAxis
-                  type="number"
-                  allowDecimals={false}
-                  tick={tick}
-                />
+                <XAxis type="number" allowDecimals={false} tick={tick} />
                 <YAxis
                   type="category"
                   dataKey="label"
-                  width={narrow ? 72 : 100}
-                  tick={{ fill: "#5b6b76", fontSize: narrow ? 9 : 11 }}
+                  width={narrow ? 64 : 96}
+                  tick={{ fill: "#5b6b76", fontSize: narrow ? 8 : 10 }}
                 />
                 <Tooltip content={<CountTooltip />} />
                 <Bar
                   dataKey="count"
                   name="Broj hala"
                   fill="#0f766e"
-                  radius={[0, 6, 6, 0]}
+                  radius={[0, 4, 4, 0]}
                   isAnimationActive={false}
                 />
               </BarChart>
-            </ResponsiveContainer>
-          ) : null}
+            )}
+          </ChartFrame>
         </div>
       </Card>
     </div>

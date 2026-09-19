@@ -21,8 +21,8 @@ export function HomePage({ data }: { data: DashboardData }) {
     EXPENSE_CATEGORIES.find((c) => c.value === value)?.label ?? value;
 
   return (
-    <div className="space-y-8">
-      <section className="relative overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--ink)] px-6 py-8 text-[var(--bg)] sm:px-8">
+    <div className="w-full min-w-0 max-w-full space-y-6 sm:space-y-8">
+      <section className="relative overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--ink)] px-4 py-6 text-[var(--bg)] sm:px-8 sm:py-8">
         <div
           className="pointer-events-none absolute inset-0 opacity-40"
           style={{

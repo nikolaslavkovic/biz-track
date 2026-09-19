@@ -128,7 +128,7 @@ export function StatCard({
       </p>
       <p
         className={cn(
-          "mt-2 font-[family-name:var(--font-display)] text-2xl font-semibold tracking-tight sm:text-3xl",
+          "mt-2 break-words font-[family-name:var(--font-display)] text-xl font-semibold tracking-tight sm:text-3xl",
           toneClass,
         )}
       >
