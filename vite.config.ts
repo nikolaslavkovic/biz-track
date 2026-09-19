@@ -13,7 +13,11 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
+      injectRegister: false,
       includeAssets: ["favicon.svg"],
+      devOptions: {
+        enabled: false,
+      },
       manifest: {
         name: "FirmaRačun",
         short_name: "FirmaRačun",
@@ -48,15 +52,24 @@ export default defineConfig({
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
         navigateFallback: "index.html",
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: true,
       },
     }),
   ],
   server: {
     host: "0.0.0.0",
     port: 43127,
+    headers: {
+      "Cache-Control": "no-store",
+    },
   },
   preview: {
     host: "0.0.0.0",
     port: 43127,
+    headers: {
+      "Cache-Control": "no-store",
+    },
   },
 });
