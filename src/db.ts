@@ -62,6 +62,27 @@ export type Expense = {
   description: string;
   amount: number;
   projectId: number | null;
+  /** Originalna valuta i iznos pri uvozu (amount je uvek u RSD) */
+  sourceCurrency?: string;
+  sourceAmount?: number;
+  /** Jedinstveni ključ uvezene transakcije — sprečava dupli uvoz */
+  importKey?: string;
+  createdAt: string;
+};
+
+export type IncomeCategory = "prodaja" | "avans" | "ostalo";
+
+export type Income = {
+  id?: number;
+  date: string;
+  category: IncomeCategory;
+  subcategory: string;
+  description: string;
+  /** Iznos u RSD */
+  amount: number;
+  sourceCurrency?: string;
+  sourceAmount?: number;
+  importKey?: string;
   createdAt: string;
 };
 
@@ -75,6 +96,7 @@ class FirmaDB extends Dexie {
   workers!: EntityTable<Worker, "id">;
   workLogs!: EntityTable<WorkLog, "id">;
   expenses!: EntityTable<Expense, "id">;
+  incomes!: EntityTable<Income, "id">;
   settings!: EntityTable<AppSetting, "key">;
 
   constructor() {
@@ -129,6 +151,14 @@ class FirmaDB extends Dexie {
             if (e.category === "mesecni") e.category = "obaveze";
           });
       });
+    this.version(4).stores({
+      projects: "++id, startDate, status, widthM, createdAt, sortOrder",
+      workers: "++id, name, active",
+      workLogs: "++id, workerId, date",
+      expenses: "++id, date, category, projectId, importKey",
+      incomes: "++id, date, category, importKey",
+      settings: "key",
+    });
   }
 }
 

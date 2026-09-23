@@ -7,6 +7,7 @@ import {
   type Worker,
   type WorkLog,
   type Expense,
+  type Income,
 } from "../db";
 import {
   formatWeekRange,
@@ -41,6 +42,7 @@ export type DashboardData = {
   workers: Worker[];
   workLogs: WorkLog[];
   expenses: Expense[];
+  incomes: Income[];
   eurToRsd: number;
   summary: {
     revenue: number;
@@ -102,8 +104,10 @@ function laborCost(
   const plata = expenses
     .filter((e) => e.category === "plata")
     .reduce((s, e) => s + e.amount, 0);
-  if (plata > 0) return plata;
-  return workLogs.reduce((s, log) => s + logCost(log, workerMap.get(log.workerId)), 0);
+  return (
+    plata +
+    workLogs.reduce((s, log) => s + logCost(log, workerMap.get(log.workerId)), 0)
+  );
 }
 
 export function logCost(log: WorkLog, worker: Worker | undefined): number {
@@ -131,16 +135,18 @@ function filterByRange<T extends { date?: string } | Project>(
 
 function totalsFor(
   projects: Project[],
+  incomes: Income[],
   expenses: Expense[],
   workLogs: WorkLog[],
   workerMap: Map<number, Worker>,
   eurToRsd: number,
 ): Omit<OverviewSlice, "series"> {
-  const prodaja = projects.reduce(
-    (s, p) =>
-      s + toRsd(p.revenue, p.revenueCurrency, projectRate(p, eurToRsd)),
-    0,
-  );
+  const prodaja =
+    projects.reduce(
+      (s, p) =>
+        s + toRsd(p.revenue, p.revenueCurrency, projectRate(p, eurToRsd)),
+      0,
+    ) + incomes.reduce((s, i) => s + i.amount, 0);
   const troskovi = expenseTroskovi(expenses);
   const radnici = laborCost(workLogs, workerMap, expenses);
   return {
@@ -210,6 +216,7 @@ function matchBucket(mode: PeriodMode, date: string, key: string): boolean {
 function buildSeries(
   mode: PeriodMode,
   projects: Project[],
+  incomes: Income[],
   expenses: Expense[],
   workLogs: WorkLog[],
   workerMap: Map<number, Worker>,
@@ -228,6 +235,9 @@ function buildSeries(
     const bucketProjects = projects.filter((p) =>
       matchBucket(chartMode, projectDate(p), key),
     );
+    const bucketIncomes = incomes.filter((i) =>
+      matchBucket(chartMode, i.date, key),
+    );
     const bucketExpenses = expenses.filter((e) =>
       matchBucket(chartMode, e.date, key),
     );
@@ -236,6 +246,7 @@ function buildSeries(
     );
     const t = totalsFor(
       bucketProjects,
+      bucketIncomes,
       bucketExpenses,
       bucketLogs,
       workerMap,
@@ -273,11 +284,13 @@ export function buildOverview(
   }
 
   const projects = filterByRange(data.projects, start, end, projectDate);
+  const incomes = filterByRange(data.incomes, start, end, (i) => i.date);
   const expenses = filterByRange(data.expenses, start, end, (e) => e.date);
   const workLogs = filterByRange(data.workLogs, start, end, (w) => w.date);
 
   const totals = totalsFor(
     projects,
+    incomes,
     expenses,
     workLogs,
     workerMap,
@@ -289,6 +302,7 @@ export function buildOverview(
     series: buildSeries(
       mode,
       data.projects,
+      data.incomes,
       data.expenses,
       data.workLogs,
       workerMap,
@@ -298,12 +312,20 @@ export function buildOverview(
 }
 
 export async function loadDashboardData(): Promise<DashboardData> {
-  const [projects, workers, workLogs, expenses, eurToRsd, customSubcategories] =
-    await Promise.all([
+  const [
+    projects,
+    workers,
+    workLogs,
+    expenses,
+    incomes,
+    eurToRsd,
+    customSubcategories,
+  ] = await Promise.all([
       db.projects.orderBy("startDate").reverse().toArray(),
       db.workers.orderBy("name").toArray(),
       db.workLogs.orderBy("date").reverse().toArray(),
       db.expenses.orderBy("date").reverse().toArray(),
+      db.incomes.orderBy("date").reverse().toArray(),
       getEurToRsdRate(),
       getCustomSubcategories(),
     ]);
@@ -315,6 +337,7 @@ export async function loadDashboardData(): Promise<DashboardData> {
       workers,
       workLogs,
       expenses,
+      incomes,
       eurToRsd,
       summary: {
         revenue: 0,
@@ -424,6 +447,7 @@ export async function loadDashboardData(): Promise<DashboardData> {
     workers,
     workLogs,
     expenses,
+    incomes,
     eurToRsd,
     summary: {
       revenue: overview.prodaja,
