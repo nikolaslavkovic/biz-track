@@ -1,8 +1,10 @@
 import { useState, type FormEvent } from "react";
 import {
   ArrowLeft,
+  Banknote,
   FileText,
   Layers,
+  Megaphone,
   Plus,
   Users,
   Wrench,
@@ -10,59 +12,50 @@ import {
   Zap,
   type LucideIcon,
 } from "lucide-react";
-import {
-  db,
-  setCustomSubcategories,
-  type ExpenseCategory,
-} from "../db";
+import { db, setCustomSubcategories, type Expense, type Income } from "../db";
 import { Button, Card, Field, Input, Select } from "../components/ui";
 import type { DashboardData } from "../lib/data";
 import {
-  DEFAULT_SUBCATEGORIES,
   FEROX_CATEGORIES,
+  INCOME_SUBCATEGORY_KEY,
+  MONEY_MANAGER_INCOME,
   cn,
   expenseCategoryLabel,
   formatDate,
   formatMoney,
+  incomeLabel,
+  normalizeName,
   sourceAmountLabel,
   todayISO,
 } from "../lib/utils";
 
 type FeroxCategory = (typeof FEROX_CATEGORIES)[number]["value"];
+type Mode = "trosak" | "prihod";
 
-const CATEGORY_STYLE: Record<
-  FeroxCategory,
-  { icon: LucideIcon; tile: string; chip: string }
-> = {
-  alat: {
-    icon: Wrench,
-    tile: "bg-sky-50 text-sky-900 border-sky-200",
-    chip: "bg-sky-600",
-  },
-  materijal: {
-    icon: Layers,
-    tile: "bg-teal-50 text-teal-900 border-teal-200",
-    chip: "bg-teal-600",
-  },
-  potrosni: {
-    icon: Zap,
-    tile: "bg-amber-50 text-amber-900 border-amber-200",
-    chip: "bg-amber-600",
-  },
-  obaveze: {
-    icon: FileText,
-    tile: "bg-violet-50 text-violet-900 border-violet-200",
-    chip: "bg-violet-600",
-  },
+const CATEGORY_STYLE: Record<FeroxCategory, { icon: LucideIcon; tile: string; chip: string }> = {
+  materijal: { icon: Layers, tile: "bg-teal-50 text-teal-900 border-teal-200", chip: "bg-teal-600" },
+  alat: { icon: Wrench, tile: "bg-sky-50 text-sky-900 border-sky-200", chip: "bg-sky-600" },
+  potrosni: { icon: Zap, tile: "bg-amber-50 text-amber-900 border-amber-200", chip: "bg-amber-600" },
+  obaveze: { icon: FileText, tile: "bg-violet-50 text-violet-900 border-violet-200", chip: "bg-violet-600" },
+  marketing: { icon: Megaphone, tile: "bg-fuchsia-50 text-fuchsia-900 border-fuchsia-200", chip: "bg-fuchsia-600" },
+  plata: { icon: Users, tile: "bg-rose-50 text-rose-900 border-rose-200", chip: "bg-rose-600" },
 };
+
+const INCOME_STYLE = { icon: Banknote, chip: "bg-emerald-600" };
 
 const HISTORY_STYLE: Record<string, { icon: LucideIcon; chip: string }> = {
   ...CATEGORY_STYLE,
   mesecni: CATEGORY_STYLE.obaveze,
-  plata: { icon: Users, chip: "bg-rose-600" },
 };
 
 const HISTORY_PAGE = 40;
+
+function moneyFromForm(fd: FormData, eurToRsd: number) {
+  const value = Number(fd.get("amount") || 0);
+  const currency = String(fd.get("currency") || "RSD");
+  const amount = currency === "EUR" ? Math.round(value * eurToRsd * 100) / 100 : value;
+  return { amount, sourceCurrency: currency, sourceAmount: value };
+}
 
 export function TroskoviPage({
   data,
@@ -71,7 +64,8 @@ export function TroskoviPage({
   data: DashboardData;
   onChange: () => Promise<void>;
 }) {
-  const { expenses, projects, customSubcategories } = data;
+  const { expenses, incomes, projects, customSubcategories, eurToRsd } = data;
+  const [mode, setMode] = useState<Mode>("trosak");
   const [category, setCategory] = useState<FeroxCategory | null>(null);
   const [subcategory, setSubcategory] = useState("");
   const [addingSub, setAddingSub] = useState(false);
@@ -79,29 +73,37 @@ export function TroskoviPage({
   const [message, setMessage] = useState<string | null>(null);
   const [shown, setShown] = useState(HISTORY_PAGE);
 
-  const custom = category ? (customSubcategories[category] ?? []) : [];
-  const defaults = category ? DEFAULT_SUBCATEGORIES[category] ?? [] : [];
+  const subKey = mode === "prihod" ? INCOME_SUBCATEGORY_KEY : category;
+  const subcats = subKey ? (customSubcategories[subKey] ?? []) : [];
+  const formOpen = mode === "prihod" || !!category;
+  const style = mode === "prihod" ? INCOME_STYLE : category ? CATEGORY_STYLE[category] : null;
+  const title = mode === "prihod" ? MONEY_MANAGER_INCOME : category ? expenseCategoryLabel(category) : "";
 
-  function pick(value: FeroxCategory) {
-    setCategory(value);
+  function resetEntry() {
     setSubcategory("");
     setAddingSub(false);
     setNewSub("");
     setMessage(null);
+    setShown(HISTORY_PAGE);
+  }
+
+  function switchMode(next: Mode) {
+    setMode(next);
+    setCategory(null);
+    resetEntry();
+  }
+
+  function pick(value: FeroxCategory | null) {
+    setCategory(value);
+    resetEntry();
   }
 
   async function addSubcategory(e: FormEvent) {
     e.preventDefault();
     const name = newSub.trim();
-    if (!category || !name) return;
-    const exists = [...defaults, ...custom].some(
-      (s) => s.toLowerCase() === name.toLowerCase(),
-    );
-    if (!exists) {
-      await setCustomSubcategories({
-        ...customSubcategories,
-        [category]: [...custom, name],
-      });
+    if (!subKey || !name) return;
+    if (!subcats.some((s) => normalizeName(s) === normalizeName(name))) {
+      await setCustomSubcategories({ ...customSubcategories, [subKey]: [...subcats, name] });
       await onChange();
     }
     setSubcategory(name);
@@ -110,11 +112,11 @@ export function TroskoviPage({
   }
 
   async function removeSubcategory(name: string) {
-    if (!category) return;
-    if (!confirm(`Ukloniti podkategoriju „${name}“?`)) return;
+    if (!subKey) return;
+    if (!confirm(`Ukloniti podkategoriju „${name}“? Postojeći unosi ostaju.`)) return;
     await setCustomSubcategories({
       ...customSubcategories,
-      [category]: custom.filter((s) => s !== name),
+      [subKey]: subcats.filter((s) => s !== name),
     });
     if (subcategory === name) setSubcategory("");
     await onChange();
@@ -122,43 +124,90 @@ export function TroskoviPage({
 
   async function create(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!category) return;
     const form = e.currentTarget;
     const fd = new FormData(form);
-    const projectIdRaw = String(fd.get("projectId") || "");
-    await db.expenses.add({
+    const money = moneyFromForm(fd, eurToRsd);
+    const base = {
       date: String(fd.get("date") || todayISO()),
-      category: category as ExpenseCategory,
       subcategory: subcategory.trim(),
       description: String(fd.get("description") || "").trim(),
-      amount: Number(fd.get("amount") || 0),
-      projectId: projectIdRaw ? Number(projectIdRaw) : null,
+      ...money,
       createdAt: new Date().toISOString(),
-    });
+    };
+    if (mode === "prihod") {
+      await db.incomes.add({
+        ...base,
+        category: normalizeName(base.subcategory) === "avans" ? "avans" : "prodaja",
+      });
+    } else if (category) {
+      const projectIdRaw = String(fd.get("projectId") || "");
+      await db.expenses.add({
+        ...base,
+        category,
+        projectId: projectIdRaw ? Number(projectIdRaw) : null,
+      });
+    }
     form.reset();
-    const label = subcategory || expenseCategoryLabel(category);
+    setMessage(`Sačuvano: ${subcategory || title} · ${formatMoney(money.amount)}`);
     setSubcategory("");
-    setMessage(`Sačuvano: ${label}`);
     await onChange();
   }
 
-  async function remove(id: number) {
+  async function removeExpense(id: number) {
     if (!confirm("Obrisati trošak?")) return;
     await db.expenses.delete(id);
     await onChange();
   }
 
-  const active = category ? CATEGORY_STYLE[category] : null;
+  async function removeIncome(id: number) {
+    if (!confirm("Obrisati prihod?")) return;
+    await db.incomes.delete(id);
+    await onChange();
+  }
+
+  const history: Array<Expense | Income> =
+    mode === "prihod"
+      ? incomes
+      : category
+        ? expenses.filter((e) => e.category === category)
+        : expenses;
+  const filteredHistory = subcategory
+    ? history.filter((h) => h.subcategory === subcategory)
+    : history;
+  const historyTotal = filteredHistory.reduce((s, h) => s + h.amount, 0);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <div>
         <h1 className="font-[family-name:var(--font-display)] text-xl font-bold sm:text-2xl">
-          Troškovi
+          {mode === "prihod" ? "Prihodi" : "Troškovi"}
         </h1>
         <p className="mt-0.5 text-xs text-[var(--muted)]">
-          Izaberi vrstu troška, pa unesi detalje.
+          Iste kategorije kao u MoneyManager-u.
         </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-1 rounded-lg border border-[var(--line)] bg-[var(--surface-2)] p-1">
+        {(
+          [
+            ["trosak", "Troškovi"],
+            ["prihod", "Prihodi"],
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => switchMode(value)}
+            className={cn(
+              "min-h-9 rounded-md text-sm font-semibold transition-colors",
+              mode === value
+                ? "bg-[var(--ink)] text-[var(--bg)]"
+                : "text-[var(--muted)] active:bg-[var(--surface)]",
+            )}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {message ? (
@@ -167,60 +216,53 @@ export function TroskoviPage({
         </div>
       ) : null}
 
-      {!category || !active ? (
-        <section className="grid grid-cols-2 gap-2.5">
+      {!formOpen ? (
+        <section className="grid grid-cols-2 gap-2">
           {FEROX_CATEGORIES.map((c) => {
-            const style = CATEGORY_STYLE[c.value];
-            const Icon = style.icon;
+            const s = CATEGORY_STYLE[c.value];
+            const Icon = s.icon;
+            const subs = customSubcategories[c.value] ?? [];
             return (
               <button
                 key={c.value}
                 type="button"
                 onClick={() => pick(c.value)}
                 className={cn(
-                  "flex min-h-[7.5rem] flex-col items-center justify-center gap-2 rounded-xl border-2 px-2 py-3 text-center shadow-sm transition-transform active:scale-[0.97]",
-                  style.tile,
+                  "flex min-h-[6.5rem] flex-col items-center justify-center gap-1.5 rounded-xl border-2 px-2 py-2.5 text-center shadow-sm transition-transform active:scale-[0.97]",
+                  s.tile,
                 )}
               >
-                <span
-                  className={cn(
-                    "flex h-12 w-12 items-center justify-center rounded-xl text-white",
-                    style.chip,
-                  )}
-                >
-                  <Icon className="h-6 w-6" />
+                <span className={cn("flex h-10 w-10 items-center justify-center rounded-xl text-white", s.chip)}>
+                  <Icon className="h-5 w-5" />
                 </span>
-                <span className="text-sm font-bold leading-tight">{c.label}</span>
-                {customSubcategories[c.value]?.length ? (
+                <span className="text-[13px] font-bold leading-tight">{c.label}</span>
+                {subs.length ? (
                   <span className="line-clamp-2 text-[10px] leading-tight opacity-70">
-                    {customSubcategories[c.value]!.join(", ")}
+                    {subs.join(", ")}
                   </span>
                 ) : null}
               </button>
             );
           })}
         </section>
-      ) : (
+      ) : style ? (
         <Card className="!p-3 sm:!p-4">
           <div className="mb-3 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setCategory(null)}
-              aria-label="Nazad na vrste troška"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--surface-2)]"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </button>
-            <span
-              className={cn(
-                "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white",
-                active.chip,
-              )}
-            >
-              <active.icon className="h-5 w-5" />
+            {mode === "trosak" ? (
+              <button
+                type="button"
+                onClick={() => pick(null)}
+                aria-label="Nazad na kategorije"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--surface-2)]"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </button>
+            ) : null}
+            <span className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white", style.chip)}>
+              <style.icon className="h-5 w-5" />
             </span>
             <h2 className="min-w-0 truncate font-[family-name:var(--font-display)] text-lg font-semibold">
-              {expenseCategoryLabel(category)}
+              {title}
             </h2>
           </div>
 
@@ -229,36 +271,33 @@ export function TroskoviPage({
               Podkategorija
             </p>
             <div className="flex flex-wrap gap-1.5">
-              {[...defaults, ...custom].map((s) => {
+              {subcats.map((s) => {
                 const selected = subcategory === s;
-                const isCustom = custom.includes(s);
                 return (
                   <span
                     key={s}
                     className={cn(
                       "inline-flex items-center rounded-full border text-sm font-medium",
                       selected
-                        ? cn(active.chip, "border-transparent text-white")
+                        ? cn(style.chip, "border-transparent text-white")
                         : "border-[var(--line)] bg-[var(--surface)]",
                     )}
                   >
                     <button
                       type="button"
                       onClick={() => setSubcategory(selected ? "" : s)}
-                      className={cn("py-1.5 pl-3", isCustom ? "pr-1" : "pr-3")}
+                      className="py-1.5 pr-1 pl-3"
                     >
                       {s}
                     </button>
-                    {isCustom ? (
-                      <button
-                        type="button"
-                        onClick={() => void removeSubcategory(s)}
-                        aria-label={`Ukloni ${s}`}
-                        className="py-1.5 pr-2 pl-1 opacity-60"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => void removeSubcategory(s)}
+                      aria-label={`Ukloni ${s}`}
+                      className="py-1.5 pr-2 pl-1 opacity-60"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
                   </span>
                 );
               })}
@@ -301,93 +340,120 @@ export function TroskoviPage({
           </div>
 
           <form
-            key={category}
+            key={`${mode}-${category}`}
             onSubmit={create}
             className="grid grid-cols-2 gap-2.5 border-t border-[var(--line)] pt-3"
           >
-            <Field label="Iznos (RSD)">
+            <Field label="Iznos">
               <Input
                 name="amount"
                 type="number"
-                inputMode="numeric"
-                min="1"
+                inputMode="decimal"
+                min="0.01"
+                step="0.01"
                 required
               />
             </Field>
-            <Field label="Datum">
-              <Input name="date" type="date" defaultValue={todayISO()} required />
-            </Field>
-            <Field label="Hala (opciono)" className="col-span-2">
-              <Select name="projectId" defaultValue="">
-                <option value="">— bez hale —</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
+            <Field label="Valuta">
+              <Select name="currency" defaultValue="RSD">
+                <option value="RSD">RSD</option>
+                <option value="EUR">EUR (kurs {eurToRsd})</option>
               </Select>
             </Field>
-            <Field label="Opis" className="col-span-2">
-              <Input name="description" placeholder="opciono" />
+            <Field label="Datum" className={mode === "prihod" ? "col-span-2" : undefined}>
+              <Input name="date" type="date" defaultValue={todayISO()} required />
+            </Field>
+            {mode === "trosak" ? (
+              <Field label="Hala (opciono)">
+                <Select name="projectId" defaultValue="">
+                  <option value="">— bez hale —</option>
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            ) : null}
+            <Field label="Napomena" className="col-span-2">
+              <Input
+                name="description"
+                placeholder={mode === "prihod" ? "npr. 12x6x3m na dve vode" : "opciono"}
+              />
             </Field>
             <div className="col-span-2">
               <Button type="submit" className="w-full">
-                Sačuvaj trošak
+                {mode === "prihod" ? "Sačuvaj prihod" : "Sačuvaj trošak"}
                 {subcategory ? ` · ${subcategory}` : ""}
               </Button>
             </div>
           </form>
         </Card>
-      )}
+      ) : null}
 
       <section className="space-y-2">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-          Istorija ({expenses.length})
-        </h2>
-        {expenses.length === 0 ? (
+        <div className="flex items-baseline justify-between gap-2">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+            {mode === "prihod" ? "Svi prihodi" : category ? `Istorija · ${title}` : "Svi troškovi"}
+            {subcategory ? ` / ${subcategory}` : ""} ({filteredHistory.length})
+          </h2>
+          <span className="shrink-0 text-sm font-semibold tabular-nums">
+            {formatMoney(historyTotal)}
+          </span>
+        </div>
+        {filteredHistory.length === 0 ? (
           <Card>
-            <p className="text-sm text-[var(--muted)]">Nema unetih troškova.</p>
+            <p className="text-sm text-[var(--muted)]">Nema unosa.</p>
           </Card>
         ) : (
           <ul className="space-y-1.5">
-            {expenses.slice(0, shown).map((e) => {
-              const style = HISTORY_STYLE[e.category];
-              const Icon = style?.icon;
+            {filteredHistory.slice(0, shown).map((h) => {
+              const isIncome = mode === "prihod";
+              const e = h as Expense;
+              const s = isIncome ? INCOME_STYLE : HISTORY_STYLE[e.category];
+              const Icon = s?.icon;
+              const catLabel = isIncome
+                ? incomeLabel(h as Income)
+                : e.originalCategory || expenseCategoryLabel(e.category);
+              const foreign = sourceAmountLabel(h);
               return (
                 <li
-                  key={e.id}
+                  key={h.id}
                   className="flex items-center gap-2.5 rounded-lg border border-[var(--line)] bg-[var(--surface)] px-2.5 py-2"
                 >
                   <span
                     className={cn(
                       "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white",
-                      style?.chip ?? "bg-slate-500",
+                      s?.chip ?? "bg-slate-500",
                     )}
                   >
                     {Icon ? <Icon className="h-4 w-4" /> : null}
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">
-                      {e.subcategory || expenseCategoryLabel(e.category)}
+                      {isIncome
+                        ? h.description || h.subcategory || catLabel
+                        : h.subcategory || h.description || catLabel}
                     </p>
                     <p className="truncate text-[11px] text-[var(--muted)]">
-                      {formatDate(e.date)} · {expenseCategoryLabel(e.category)}
-                      {e.description ? ` · ${e.description}` : ""}
+                      {formatDate(h.date)} · {catLabel}
+                      {!isIncome && h.subcategory && h.description ? ` · ${h.description}` : ""}
                     </p>
                   </div>
                   <div className="shrink-0 text-right">
-                    <p className="text-sm font-semibold tabular-nums">
-                      {formatMoney(e.amount)}
+                    <p
+                      className={cn(
+                        "text-sm font-semibold tabular-nums",
+                        isIncome && "text-[var(--good)]",
+                      )}
+                    >
+                      {formatMoney(h.amount)}
                     </p>
-                    {sourceAmountLabel(e) ? (
-                      <p className="text-[10px] text-[var(--muted)]">
-                        {sourceAmountLabel(e)}
-                      </p>
-                    ) : null}
+                    {foreign ? <p className="text-[10px] text-[var(--muted)]">{foreign}</p> : null}
                     <button
                       type="button"
                       className="text-[11px] font-medium text-[var(--danger)]"
-                      onClick={() => remove(e.id!)}
+                      onClick={() => (isIncome ? removeIncome(h.id!) : removeExpense(h.id!))}
                     >
                       Obriši
                     </button>
@@ -397,7 +463,7 @@ export function TroskoviPage({
             })}
           </ul>
         )}
-        {shown < expenses.length ? (
+        {shown < filteredHistory.length ? (
           <Button
             type="button"
             size="sm"
@@ -405,7 +471,7 @@ export function TroskoviPage({
             className="w-full"
             onClick={() => setShown((n) => n + HISTORY_PAGE)}
           >
-            Prikaži još ({expenses.length - shown})
+            Prikaži još ({filteredHistory.length - shown})
           </Button>
         ) : null}
       </section>
