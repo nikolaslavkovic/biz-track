@@ -120,7 +120,12 @@ export function HomePage({
 
       {insights ? <InsightsSection insights={insights} /> : null}
 
-      <DataImportCard incomes={data.incomes} onChange={onChange} />
+      <DataImportCard
+        hasImported={
+          data.incomes.some((i) => i.importKey) || data.expenses.some((e) => e.importKey)
+        }
+        onChange={onChange}
+      />
     </div>
   );
 }
