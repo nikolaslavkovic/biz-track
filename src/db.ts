@@ -3,7 +3,13 @@ import Dexie, { type EntityTable } from "dexie";
 export type ProjectStatus = "aktivan" | "zavrsen" | "pauziran";
 export type RoofType = "jedna_voda" | "dve_vode";
 export type SaleCurrency = "RSD" | "EUR";
-export type ExpenseCategory = "materijal" | "mesecni" | "plata" | "ostalo";
+export type ExpenseCategory =
+  | "alat"
+  | "materijal"
+  | "potrosni"
+  | "obaveze"
+  | "plata"
+  | "ostalo";
 
 export type Project = {
   id?: number;
@@ -22,6 +28,8 @@ export type Project = {
   widthM: number;
   heightM: number;
   roofType: RoofType;
+  /** Ručni redosled na listi hala (manji broj = više gore / hitnije) */
+  sortOrder: number;
   createdAt: string;
 };
 
@@ -38,6 +46,8 @@ export type WorkLog = {
   workerId: number;
   date: string;
   hours: number;
+  /** Dodatak (+) ili odbitak (−) u RSD, van satnice */
+  adjustment?: number;
   note: string;
   createdAt: string;
 };
@@ -95,6 +105,28 @@ class FirmaDB extends Dexie {
             }
           });
       });
+    this.version(3)
+      .stores({
+        projects: "++id, startDate, status, widthM, createdAt, sortOrder",
+        workers: "++id, name, active",
+        workLogs: "++id, workerId, date",
+        expenses: "++id, date, category, projectId",
+        settings: "key",
+      })
+      .upgrade(async (tx) => {
+        await tx
+          .table("projects")
+          .toCollection()
+          .modify((p: Project) => {
+            if (p.sortOrder == null) p.sortOrder = p.id ?? 0;
+          });
+        await tx
+          .table("expenses")
+          .toCollection()
+          .modify((e: { category: string }) => {
+            if (e.category === "mesecni") e.category = "obaveze";
+          });
+      });
   }
 }
 
@@ -108,4 +140,20 @@ export async function getEurToRsdRate(): Promise<number> {
 
 export async function setEurToRsdRate(rate: number) {
   await db.settings.put({ key: "eur_to_rsd", value: String(rate) });
+}
+
+export type CustomSubcategories = Partial<Record<ExpenseCategory, string[]>>;
+
+export async function getCustomSubcategories(): Promise<CustomSubcategories> {
+  const row = await db.settings.get("expense_subcats");
+  if (!row) return {};
+  try {
+    return JSON.parse(row.value) as CustomSubcategories;
+  } catch {
+    return {};
+  }
+}
+
+export async function setCustomSubcategories(value: CustomSubcategories) {
+  await db.settings.put({ key: "expense_subcats", value: JSON.stringify(value) });
 }

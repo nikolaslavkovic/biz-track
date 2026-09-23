@@ -224,31 +224,38 @@ export function formatDimensions(
   return `${lengthM || "?"} × ${widthM || "?"} × ${heightM || "?"} m`;
 }
 
+/** Glavne kategorije koje se biraju ikonicama na strani Troškovi */
+export const FEROX_CATEGORIES = [
+  { value: "alat", label: "Ferox alat" },
+  { value: "materijal", label: "Ferox materijal" },
+  { value: "potrosni", label: "Ferox potrošni materijal" },
+  { value: "obaveze", label: "Ferox obaveze" },
+] as const;
+
 export const EXPENSE_CATEGORIES = [
-  { value: "materijal", label: "Materijal" },
-  { value: "mesecni", label: "Mesečni trošak" },
+  ...FEROX_CATEGORIES,
   { value: "plata", label: "Plata / isplata" },
   { value: "ostalo", label: "Ostalo" },
 ] as const;
 
-export const MATERIAL_SUBCATEGORIES = [
-  "Cevi",
-  "Farba",
-  "Žica",
-  "Fittings",
-  "Alat",
-  "Ostalo",
-];
+export const DEFAULT_SUBCATEGORIES: Record<string, string[]> = {
+  alat: [],
+  materijal: ["Cevi za CNC sečenje", "Farba"],
+  potrosni: [
+    "Žica",
+    "CO2 gas",
+    "Plin za viljuškar",
+    "Dizne",
+    "Rezne ploče",
+    "Galfos",
+  ],
+  obaveze: ["Struja", "Porez", "Kirija", "Internet", "Gorivo", "Osiguranje"],
+};
 
-export const MONTHLY_SUBCATEGORIES = [
-  "Struja",
-  "Porez",
-  "Kirija",
-  "Internet",
-  "Gorivo",
-  "Osiguranje",
-  "Ostalo",
-];
+export function expenseCategoryLabel(value: string): string {
+  if (value === "mesecni") return "Ferox obaveze";
+  return EXPENSE_CATEGORIES.find((c) => c.value === value)?.label ?? value;
+}
 
 export const PROJECT_STATUSES = [
   { value: "aktivan", label: "Aktivan" },

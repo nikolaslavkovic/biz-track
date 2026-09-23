@@ -1,6 +1,8 @@
 import {
   db,
+  getCustomSubcategories,
   getEurToRsdRate,
+  type CustomSubcategories,
   type Project,
   type Worker,
   type WorkLog,
@@ -76,9 +78,12 @@ export type DashboardData = {
       workerName: string;
       hourlyRate: number;
       hours: number;
+      adjustment: number;
       cost: number;
+      logIds: number[];
     }>;
   }>;
+  customSubcategories: CustomSubcategories;
 };
 
 function yearKey(date: string): string {
@@ -98,10 +103,11 @@ function laborCost(
     .filter((e) => e.category === "plata")
     .reduce((s, e) => s + e.amount, 0);
   if (plata > 0) return plata;
-  return workLogs.reduce((s, log) => {
-    const w = workerMap.get(log.workerId);
-    return s + log.hours * (w?.hourlyRate || 0);
-  }, 0);
+  return workLogs.reduce((s, log) => s + logCost(log, workerMap.get(log.workerId)), 0);
+}
+
+export function logCost(log: WorkLog, worker: Worker | undefined): number {
+  return log.hours * (worker?.hourlyRate || 0) + (Number(log.adjustment) || 0);
 }
 
 function expenseTroskovi(expenses: Expense[]): number {
@@ -292,13 +298,15 @@ export function buildOverview(
 }
 
 export async function loadDashboardData(): Promise<DashboardData> {
-  const [projects, workers, workLogs, expenses, eurToRsd] = await Promise.all([
-    db.projects.orderBy("startDate").reverse().toArray(),
-    db.workers.orderBy("name").toArray(),
-    db.workLogs.orderBy("date").reverse().toArray(),
-    db.expenses.orderBy("date").reverse().toArray(),
-    getEurToRsdRate(),
-  ]);
+  const [projects, workers, workLogs, expenses, eurToRsd, customSubcategories] =
+    await Promise.all([
+      db.projects.orderBy("startDate").reverse().toArray(),
+      db.workers.orderBy("name").toArray(),
+      db.workLogs.orderBy("date").reverse().toArray(),
+      db.expenses.orderBy("date").reverse().toArray(),
+      getEurToRsdRate(),
+      getCustomSubcategories(),
+    ]);
 
   const workerMap = new Map(workers.map((w) => [w.id!, w]));
   const overview = buildOverview(
@@ -321,6 +329,7 @@ export async function loadDashboardData(): Promise<DashboardData> {
       series: [],
       hallStats: { byWidth: [], bySize: [] },
       weekly: [],
+      customSubcategories,
     },
     "ukupno",
   );
@@ -329,15 +338,14 @@ export async function loadDashboardData(): Promise<DashboardData> {
     .filter((e) => e.category === "materijal")
     .reduce((s, e) => s + e.amount, 0);
   const monthlyCost = expenses
-    .filter((e) => e.category === "mesecni")
+    .filter((e) => e.category === "obaveze")
     .reduce((s, e) => s + e.amount, 0);
 
   let totalHours = 0;
   let laborFromLogs = 0;
   for (const log of workLogs) {
-    const w = workerMap.get(log.workerId);
     totalHours += log.hours;
-    laborFromLogs += log.hours * (w?.hourlyRate || 0);
+    laborFromLogs += logCost(log, workerMap.get(log.workerId));
   }
 
   const byWidth = new Map<
@@ -388,20 +396,25 @@ export async function loadDashboardData(): Promise<DashboardData> {
       };
       weekMap.set(weekStart, week);
     }
-    const cost = log.hours * w.hourlyRate;
+    const cost = logCost(log, w);
+    const adjustment = Number(log.adjustment) || 0;
     week.totalHours += log.hours;
     week.totalCost += cost;
     const existing = week.workers.find((x) => x.workerId === log.workerId);
     if (existing) {
       existing.hours += log.hours;
+      existing.adjustment += adjustment;
       existing.cost += cost;
+      existing.logIds.push(log.id!);
     } else {
       week.workers.push({
         workerId: log.workerId,
         workerName: w.name,
         hourlyRate: w.hourlyRate,
         hours: log.hours,
+        adjustment,
         cost,
+        logIds: [log.id!],
       });
     }
   }
@@ -438,5 +451,6 @@ export async function loadDashboardData(): Promise<DashboardData> {
     weekly: [...weekMap.values()].sort((a, b) =>
       a.weekStart < b.weekStart ? 1 : -1,
     ),
+    customSubcategories,
   };
 }

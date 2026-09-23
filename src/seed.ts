@@ -31,6 +31,7 @@ export async function seedIfEmpty() {
     widthM: 12,
     heightM: 5,
     roofType: "dve_vode",
+    sortOrder: 1,
     createdAt: now,
   });
 
@@ -49,6 +50,7 @@ export async function seedIfEmpty() {
     widthM: 15,
     heightM: 6,
     roofType: "dve_vode",
+    sortOrder: 2,
     createdAt: now,
   });
 
@@ -67,6 +69,7 @@ export async function seedIfEmpty() {
     widthM: 10,
     heightM: 4.5,
     roofType: "jedna_voda",
+    sortOrder: 3,
     createdAt: now,
   });
 
@@ -85,6 +88,7 @@ export async function seedIfEmpty() {
     widthM: 12,
     heightM: 5,
     roofType: "dve_vode",
+    sortOrder: 4,
     createdAt: now,
   });
 
@@ -142,7 +146,7 @@ export async function seedIfEmpty() {
     {
       date: monthsAgo(1, 9),
       category: "materijal",
-      subcategory: "Cevi",
+      subcategory: "Cevi za CNC sečenje",
       description: "Čelični profili",
       amount: 320000,
       projectId: p1 as number,
@@ -150,7 +154,7 @@ export async function seedIfEmpty() {
     },
     {
       date: monthsAgo(1, 2),
-      category: "mesecni",
+      category: "obaveze",
       subcategory: "Struja",
       description: "Račun",
       amount: 15200,
@@ -168,7 +172,7 @@ export async function seedIfEmpty() {
     },
     {
       date: monthsAgo(0, 2),
-      category: "mesecni",
+      category: "obaveze",
       subcategory: "Gorivo",
       description: "Dizel",
       amount: 12000,
