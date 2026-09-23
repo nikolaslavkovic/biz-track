@@ -14,13 +14,13 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       injectRegister: false,
-      includeAssets: ["favicon.svg"],
+      includeAssets: ["favicon-64.png", "apple-touch-icon.png", "logo.png"],
       devOptions: {
         enabled: false,
       },
       manifest: {
-        name: "FirmaRačun",
-        short_name: "FirmaRačun",
+        name: "FEROX konstrukcije",
+        short_name: "FEROX",
         description:
           "Praćenje troškova, radnih sati i čeličnih hala — radi u browseru i offline",
         theme_color: "#0f766e",

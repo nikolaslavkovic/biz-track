@@ -2,7 +2,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
   appId: "com.firma.racun",
-  appName: "FirmaRačun",
+  appName: "FEROX konstrukcije",
   webDir: "dist",
   server: {
     androidScheme: "https",

@@ -1,4 +1,4 @@
-# FirmaRačun — web aplikacija
+# FEROX konstrukcije — web aplikacija
 
 Praćenje čeličnih hala, troškova i nedeljnih radnih sati.
 

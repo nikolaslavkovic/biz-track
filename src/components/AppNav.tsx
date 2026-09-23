@@ -1,6 +1,5 @@
 import { Link, NavLink } from "react-router-dom";
 import {
-  ClipboardList,
   FolderKanban,
   LayoutDashboard,
   Users,
@@ -26,15 +25,17 @@ export function AppNav() {
         <div className="mx-auto flex max-w-6xl items-center px-4 py-2.5 sm:px-6">
           <Link
             to="/"
-            aria-label="FirmaRačun — početna"
+            aria-label="FEROX konstrukcije — početna"
             className="flex min-w-0 items-center gap-3 rounded-lg active:opacity-70"
           >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--ink)] text-[var(--bg)]">
-              <ClipboardList className="h-4 w-4" />
-            </span>
+            <img
+              src={`${import.meta.env.BASE_URL}logo.png`}
+              alt=""
+              className="h-10 w-10 shrink-0 rounded-lg"
+            />
             <div className="min-w-0">
               <div className="truncate font-[family-name:var(--font-display)] text-base font-semibold tracking-tight sm:text-lg">
-                FirmaRačun
+                FEROX <span className="font-normal">konstrukcije</span>
               </div>
               <div className="truncate text-[11px] text-[var(--muted)] sm:text-xs">
                 Podaci u browseru

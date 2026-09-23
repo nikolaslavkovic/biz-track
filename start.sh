@@ -13,7 +13,7 @@ if [ ! -d node_modules ]; then
 fi
 
 echo ""
-echo "Pokrećem FirmaRačun → http://127.0.0.1:43127"
+echo "Pokrećem FEROX konstrukcije → http://127.0.0.1:43127"
 echo "Zaustavi sa Ctrl+C"
 echo ""
 npm run dev

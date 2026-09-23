@@ -25,7 +25,7 @@ export default function App() {
   if (!data) {
     return (
       <div className="flex min-h-screen items-center justify-center text-[var(--muted)]">
-        Učitavam FirmaRačun…
+        Učitavam FEROX konstrukcije…
       </div>
     );
   }
@@ -52,7 +52,7 @@ export default function App() {
         </Routes>
       </main>
       <footer className="hidden border-t border-[var(--line)] py-4 pb-24 text-center text-xs text-[var(--muted)] lg:block">
-        FirmaRačun · podaci se čuvaju u ovom browseru · radi i offline
+        FEROX konstrukcije · podaci se čuvaju u ovom browseru · radi i offline
       </footer>
     </div>
   );
