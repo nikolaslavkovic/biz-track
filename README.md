@@ -1,66 +1,59 @@
 # FirmaRačun — web aplikacija
 
-Praćenje čeličnih hala, troškova i nedeljnih radnih sati. Radi u browseru na računaru i telefonu.
-
-- Unosi se **pamte u browseru** (ne treba posebna baza)
-- Jezik: srpski
+Praćenje čeličnih hala, troškova i nedeljnih radnih sati.
 
 ---
 
-## Pokretanje na računaru (Windows)
+## Online besplatno (Vercel) — preporučeno
 
-1. Instaliraj **[Node.js LTS](https://nodejs.org)** (klikni LTS → Next → Finish)
-2. Raspakuj folder `FirmaRacun-lokalno.zip` gde želiš (npr. Desktop)
-3. Dupli klik na **`start.bat`**
-4. Sačekaj da piše `Local: http://localhost:43127/`
-5. Otvori Chrome i idi na: **http://127.0.0.1:43127**
+Vercel hostuje ovakve app-ove **besplatno**. Dobijaš link tipa  
+`https://firma-racun.vercel.app`
 
-Zaustavljanje: u crnom prozoru pritisni `Ctrl + C`, pa Enter.
+### Korak 1 — Kod na GitHub
 
-> Prvi put `start.bat` radi `npm install` (može da potraje 1–2 min). Posle toga kreće brže.
+1. Napravi nalog na [github.com](https://github.com) (ako nemaš)
+2. **New repository** → ime npr. `firma-racun` → Create
+3. Ubaci ovaj projekat u taj repo (Upload folder, ili GitHub Desktop, ili `git push`)
 
-### Ručno (ako baš hoćeš)
+Ako već imaš repo na GitHubu — samo push-uj poslednji kod na `main`.
 
-```bash
-npm install
-npm run dev
-```
+### Korak 2 — Poveži Vercel
 
----
+1. Otvori [vercel.com](https://vercel.com) → **Sign up** → **Continue with GitHub**
+2. **Add New… → Project**
+3. Izaberi repo `firma-racun` → **Import**
+4. Ostavi podrazumevano (Vite sam prepoznaje). **Deploy**
+5. Sačekaj 1–2 min → klikni na link koji dobiješ
 
-## Šta ti treba za „bazu“ (početnički)
+Gotovo. App je online.
 
-**Ništa posebno.** Podaci se čuvaju u browseru (IndexedDB).
+### Posle toga
 
-| Pitanje | Odgovor |
-|---|---|
-| Gde su podaci? | U Chrome/Edge na **tom** računaru |
-| Drugi računar / telefon? | Druga kopija (nema automatskog sync-a) |
-| Brisanje podataka sajta? | Briše unose |
+Svaki put kad push-uješ izmene na `main`, Vercel sam napravi novi deploy.
+
+> Podaci i dalje ostaju **u browseru** svakog korisnika (nema deljene cloud baze). To je OK za jednu osobu / jedan telefon ili PC.
 
 ---
 
-## Hostovanje na GitHub Pages (kasnije)
+## Pokretanje na računaru (offline / lokalno)
 
-Aplikacija je statički sajt. Workflow je u `.github/workflows/deploy-pages.yml`.
+1. Instaliraj [Node.js LTS](https://nodejs.org)
+2. Raspakuj projekat / kloniraj repo
+3. Windows: pokreni `start.bat`  
+   Mac/Linux: `./start.sh` ili `npm install && npm run dev`
+4. Otvori http://127.0.0.1:43127
 
-- Project site: `https://USER.github.io/REPO/#/`
-- Custom domain: u workflow stavi `BASE_PATH: /`
+---
 
-Detalji u ranijem uputstvu ispod / u Settings → Pages → GitHub Actions.
+## GitHub Pages (alternativa)
+
+Može i GitHub Pages (workflow u `.github/workflows/`).  
+Za početnike je **Vercel lakši** — manje podešavanja.
 
 ---
 
 ## Šta ima u app-u
 
-- **Pregled** — prodaja, troškovi, radnici, neto + period (ukupno/nedeljno/mesečno/godišnje)
-- **Hale** — porudžbine po redu, boje po širini, kurs zaključan po unosu
-- **Troškovi** — materijal, mesečni, ostalo
-- **Radnici** — nedeljni sati
-
-## Build (opciono)
-
-```bash
-npm run build
-npm run preview
-```
+- **Pregled** — prodaja, troškovi, radnici, neto + period
+- **Hale** — porudžbine, boje po širini, kurs zaključan po unosu
+- **Troškovi / Radnici** — unosi i nedeljni sati
