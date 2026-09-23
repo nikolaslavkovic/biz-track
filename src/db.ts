@@ -8,6 +8,7 @@ export type ExpenseCategory =
   | "materijal"
   | "potrosni"
   | "obaveze"
+  | "marketing"
   | "plata"
   | "ostalo";
 
@@ -67,6 +68,8 @@ export type Expense = {
   sourceAmount?: number;
   /** Jedinstveni ključ uvezene transakcije — sprečava dupli uvoz */
   importKey?: string;
+  /** Naziv kategorije iz MoneyManager-a kad ne odgovara nijednoj FEROX kategoriji */
+  originalCategory?: string;
   createdAt: string;
 };
 
@@ -83,6 +86,7 @@ export type Income = {
   sourceCurrency?: string;
   sourceAmount?: number;
   importKey?: string;
+  originalCategory?: string;
   createdAt: string;
 };
 
@@ -174,7 +178,7 @@ export async function setEurToRsdRate(rate: number) {
   await db.settings.put({ key: "eur_to_rsd", value: String(rate) });
 }
 
-export type CustomSubcategories = Partial<Record<ExpenseCategory, string[]>>;
+export type CustomSubcategories = Partial<Record<string, string[]>>;
 
 export async function getCustomSubcategories(): Promise<CustomSubcategories> {
   const row = await db.settings.get("expense_subcats");

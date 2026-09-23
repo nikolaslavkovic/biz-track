@@ -224,30 +224,54 @@ export function formatDimensions(
   return `${lengthM || "?"} × ${widthM || "?"} × ${heightM || "?"} m`;
 }
 
-/** Glavne kategorije koje se biraju ikonicama na strani Troškovi */
+/** Kategorije troškova — nazivi isti kao u MoneyManager-u */
 export const FEROX_CATEGORIES = [
-  { value: "alat", label: "Ferox alat" },
-  { value: "materijal", label: "Ferox materijal" },
-  { value: "potrosni", label: "Ferox potrošni materijal" },
-  { value: "obaveze", label: "Ferox obaveze" },
+  { value: "materijal", label: "FEROX materijal" },
+  { value: "alat", label: "FEROX alat" },
+  { value: "potrosni", label: "FEROX potrošni materijal" },
+  { value: "obaveze", label: "FEROX obaveze" },
+  { value: "marketing", label: "FEROX marketing" },
+  { value: "plata", label: "FEROX radnici" },
 ] as const;
 
 export const EXPENSE_CATEGORIES = [
   ...FEROX_CATEGORIES,
-  { value: "plata", label: "Radnici (isplate)" },
   { value: "ostalo", label: "Ostalo" },
 ] as const;
 
-export const DEFAULT_SUBCATEGORIES: Record<string, string[]> = {
-  alat: [],
-  materijal: [],
-  potrosni: [],
-  obaveze: [],
+/** Tačan naziv kategorije u MoneyManager izvozu */
+export const MONEY_MANAGER_EXPENSE: Record<string, string> = {
+  materijal: "FEROX materijal",
+  alat: "FEROX alat",
+  potrosni: "FEROX potrosni materijal",
+  obaveze: "FEROX obaveze",
+  marketing: "FEROX marketing",
+  plata: "FEROX radnici",
+  mesecni: "FEROX obaveze",
 };
 
+export const MONEY_MANAGER_INCOME = "FEROX";
+export const INCOME_SUBCATEGORY_KEY = "prihod";
+
 export function expenseCategoryLabel(value: string): string {
-  if (value === "mesecni") return "Ferox obaveze";
+  if (value === "mesecni") return "FEROX obaveze";
   return EXPENSE_CATEGORIES.find((c) => c.value === value)?.label ?? value;
+}
+
+export function incomeLabel(row: { originalCategory?: string; subcategory: string }): string {
+  const cat = row.originalCategory || MONEY_MANAGER_INCOME;
+  return row.subcategory ? `${cat} · ${row.subcategory}` : cat;
+}
+
+/** Normalizuje naziv za poređenje: mala slova, bez kvačica */
+export function normalizeName(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "dj")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 export const PROJECT_STATUSES = [
