@@ -30,6 +30,7 @@ const COST_COLORS: Record<string, string> = {
   alat: "#0284c7",
   potrosni: "#d97706",
   obaveze: "#7c3aed",
+  marketing: "#c026d3",
   ostalo: "#64748b",
 };
 
@@ -448,8 +449,8 @@ export function InsightsSection({ insights }: { insights: Insights }) {
         title="Broj prodaja po mesecu"
         hint={
           insights.avgSaleValue != null
-            ? `Koliko konstrukcija je naplaćeno (bez avansa). Prosečna naplata: ${formatMoney(insights.avgSaleValue)}.`
-            : "Koliko konstrukcija je naplaćeno (bez avansa)."
+            ? `Uplate za konstrukcije (napomena sa dimenzijama, bez avansa). Prosečna uplata: ${formatMoney(insights.avgSaleValue)}.`
+            : "Uplate za konstrukcije (napomena sa dimenzijama, bez avansa)."
         }
       >
         <ChartFrame height={c.narrow ? 150 : 200}>

@@ -48,8 +48,12 @@ const COST_LABELS: Record<string, string> = {
   alat: "Alat i oprema",
   potrosni: "Potrošni materijal",
   obaveze: "Obaveze",
+  marketing: "Marketing",
   ostalo: "Ostalo",
 };
+
+/** Napomena sa dimenzijama hale, npr. „12x6x3m na dve vode“ */
+const HALL_DIMENSIONS = /\d+(?:[.,]\d+)?\s*[x×]\s*\d+(?:[.,]\d+)?\s*[x×]\s*\d+/i;
 
 function monthLabel(key: string): string {
   const [y, m] = key.split("-").map(Number);
@@ -111,7 +115,7 @@ export function buildInsights(data: DashboardData): Insights | null {
     const b = buckets.get(monthKey(i.date));
     if (!b) continue;
     b.prodaja += i.amount;
-    if (i.category === "prodaja") {
+    if (i.category !== "avans" && HALL_DIMENSIONS.test(i.description)) {
       b.brojProdaja += 1;
       saleSum += i.amount;
       saleCount += 1;
