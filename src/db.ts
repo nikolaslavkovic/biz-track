@@ -22,6 +22,8 @@ export type Project = {
   status: ProjectStatus;
   revenue: number;
   revenueCurrency: SaleCurrency;
+  /** Uplaćen avans, u istoj valuti kao cena */
+  advance?: number;
   /** Kurs EUR→RSD zaključan u trenutku unosa — ne menja se kad se menja globalni kurs */
   eurRateAtSale: number;
   lengthM: number;

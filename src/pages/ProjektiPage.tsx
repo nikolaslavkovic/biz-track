@@ -28,6 +28,7 @@ import {
   cn,
   formatDate,
   formatDimensions,
+  formatMoney,
   formatSalePrice,
   hallColor,
   projectRate,
@@ -124,6 +125,7 @@ export function ProjektiPage({
       endDate: String(fd.get("endDate") || "") || null,
       status: String(fd.get("status") || "aktivan") as Project["status"],
       revenue: Number(fd.get("revenue") || 0),
+      advance: Number(fd.get("advance") || 0),
       revenueCurrency: String(
         fd.get("revenueCurrency") || "RSD",
       ) as Project["revenueCurrency"],
@@ -153,6 +155,7 @@ export function ProjektiPage({
       endDate: String(fd.get("endDate") || "") || null,
       status: String(fd.get("status") || "aktivan") as Project["status"],
       revenue: Number(fd.get("revenue") || 0),
+      advance: Number(fd.get("advance") || 0),
       revenueCurrency: String(
         fd.get("revenueCurrency") || "RSD",
       ) as Project["revenueCurrency"],
@@ -303,6 +306,16 @@ export function ProjektiPage({
                 </option>
               ))}
             </Select>
+          </Field>
+          <Field label="Avans (opciono)">
+            <Input
+              name="advance"
+              type="number"
+              inputMode="decimal"
+              min="0"
+              step="0.01"
+              placeholder="0"
+            />
           </Field>
           <Field label="Status">
             <Select name="status" defaultValue="aktivan">
@@ -531,6 +544,18 @@ function HallDetails({
             {formatSalePrice(p.revenue, p.revenueCurrency, projectRate(p, eurToRsd))}
           </span>
         </DetailItem>
+        {p.advance ? (
+          <>
+            <DetailItem label="Avans">
+              {formatMoney(p.advance, p.revenueCurrency)}
+            </DetailItem>
+            <DetailItem label="Preostalo">
+              <span className="font-semibold">
+                {formatMoney(p.revenue - p.advance, p.revenueCurrency)}
+              </span>
+            </DetailItem>
+          </>
+        ) : null}
         <DetailItem label="Početak">{formatDate(p.startDate)}</DetailItem>
         <DetailItem label="Završetak">{formatDate(p.endDate)}</DetailItem>
         {p.description ? (
@@ -608,7 +633,18 @@ function HallEditForm({
             ))}
           </Select>
         </Field>
-        <Field label="Status" className="col-span-2">
+        <Field label="Avans">
+          <Input
+            name="advance"
+            type="number"
+            inputMode="decimal"
+            min="0"
+            step="0.01"
+            defaultValue={p.advance || ""}
+            placeholder="0"
+          />
+        </Field>
+        <Field label="Status">
           <Select name="status" defaultValue={p.status}>
             {PROJECT_STATUSES.map((s) => (
               <option key={s.value} value={s.value}>
