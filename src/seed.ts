@@ -8,7 +8,15 @@ function monthsAgo(n: number, day = 5): string {
   return d.toISOString().slice(0, 10);
 }
 
-export async function seedIfEmpty() {
+let seeding: Promise<void> | null = null;
+
+/** React StrictMode u dev-u poziva efekat dvaput — deli isti poziv da ne bi duplirao podatke */
+export function seedIfEmpty(): Promise<void> {
+  seeding ??= seed();
+  return seeding;
+}
+
+async function seed() {
   const count = await db.projects.count();
   const rate = await db.settings.get("eur_to_rsd");
   if (!rate) await db.settings.put({ key: "eur_to_rsd", value: "117" });
