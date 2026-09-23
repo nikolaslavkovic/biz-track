@@ -65,7 +65,7 @@ export function HomePage({ data }: { data: DashboardData }) {
             Pregled
           </h1>
           <p className="text-xs text-[var(--muted)]">
-            {PERIOD_HINT[period]} · 1 EUR = {data.eurToRsd} RSD
+            {PERIOD_HINT[period]}
           </p>
         </div>
         <div className="flex shrink-0 gap-1.5">

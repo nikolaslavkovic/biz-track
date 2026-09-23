@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import {
   ClipboardList,
   FolderKanban,
@@ -23,18 +23,24 @@ export function AppNav() {
         className="sticky top-0 z-40 border-b border-[var(--line)] bg-[color-mix(in_srgb,var(--bg)_94%,transparent)] backdrop-blur-md"
         style={{ paddingTop: "env(safe-area-inset-top)" }}
       >
-        <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-2.5 sm:px-6">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--ink)] text-[var(--bg)]">
-            <ClipboardList className="h-4 w-4" />
-          </span>
-          <div className="min-w-0">
-            <div className="truncate font-[family-name:var(--font-display)] text-base font-semibold tracking-tight sm:text-lg">
-              FirmaRačun
+        <div className="mx-auto flex max-w-6xl items-center px-4 py-2.5 sm:px-6">
+          <Link
+            to="/"
+            aria-label="FirmaRačun — početna"
+            className="flex min-w-0 items-center gap-3 rounded-lg active:opacity-70"
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--ink)] text-[var(--bg)]">
+              <ClipboardList className="h-4 w-4" />
+            </span>
+            <div className="min-w-0">
+              <div className="truncate font-[family-name:var(--font-display)] text-base font-semibold tracking-tight sm:text-lg">
+                FirmaRačun
+              </div>
+              <div className="truncate text-[11px] text-[var(--muted)] sm:text-xs">
+                Podaci u browseru
+              </div>
             </div>
-            <div className="truncate text-[11px] text-[var(--muted)] sm:text-xs">
-              Podaci u browseru
-            </div>
-          </div>
+          </Link>
         </div>
       </header>
 
