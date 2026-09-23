@@ -240,16 +240,9 @@ export const EXPENSE_CATEGORIES = [
 
 export const DEFAULT_SUBCATEGORIES: Record<string, string[]> = {
   alat: [],
-  materijal: ["Cevi za CNC sečenje", "Farba"],
-  potrosni: [
-    "Žica",
-    "CO2 gas",
-    "Plin za viljuškar",
-    "Dizne",
-    "Rezne ploče",
-    "Galfos",
-  ],
-  obaveze: ["Struja", "Porez", "Kirija", "Internet", "Gorivo", "Osiguranje"],
+  materijal: [],
+  potrosni: [],
+  obaveze: [],
 };
 
 export function expenseCategoryLabel(value: string): string {

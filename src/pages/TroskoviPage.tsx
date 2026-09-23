@@ -30,31 +30,27 @@ type FeroxCategory = (typeof FEROX_CATEGORIES)[number]["value"];
 
 const CATEGORY_STYLE: Record<
   FeroxCategory,
-  { icon: LucideIcon; tile: string; chip: string; hint: string }
+  { icon: LucideIcon; tile: string; chip: string }
 > = {
   alat: {
     icon: Wrench,
     tile: "bg-sky-50 text-sky-900 border-sky-200",
     chip: "bg-sky-600",
-    hint: "Mašine, ručni i električni alat",
   },
   materijal: {
     icon: Layers,
     tile: "bg-teal-50 text-teal-900 border-teal-200",
     chip: "bg-teal-600",
-    hint: "Cevi za CNC, farba…",
   },
   potrosni: {
     icon: Zap,
     tile: "bg-amber-50 text-amber-900 border-amber-200",
     chip: "bg-amber-600",
-    hint: "Žica, gas, dizne, ploče…",
   },
   obaveze: {
     icon: FileText,
     tile: "bg-violet-50 text-violet-900 border-violet-200",
     chip: "bg-violet-600",
-    hint: "Struja, porez, kirija…",
   },
 };
 
@@ -189,9 +185,11 @@ export function TroskoviPage({
                   <Icon className="h-6 w-6" />
                 </span>
                 <span className="text-sm font-bold leading-tight">{c.label}</span>
-                <span className="text-[10px] leading-tight opacity-70">
-                  {style.hint}
-                </span>
+                {customSubcategories[c.value]?.length ? (
+                  <span className="line-clamp-2 text-[10px] leading-tight opacity-70">
+                    {customSubcategories[c.value]!.join(", ")}
+                  </span>
+                ) : null}
               </button>
             );
           })}
