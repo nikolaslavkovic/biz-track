@@ -197,7 +197,7 @@ function labelForBucket(mode: PeriodMode, key: string): string {
   if (mode === "godisnje") return key;
   // mesecno / ukupno chart
   const [y, m] = key.split("-").map(Number);
-  return new Intl.DateTimeFormat("sr-RS", {
+  return new Intl.DateTimeFormat("sr-Latn-RS", {
     month: "short",
     year: "2-digit",
   }).format(new Date(y, (m || 1) - 1, 1));
