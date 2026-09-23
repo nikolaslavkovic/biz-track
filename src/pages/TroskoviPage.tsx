@@ -4,6 +4,7 @@ import {
   FileText,
   Layers,
   Plus,
+  Users,
   Wrench,
   X,
   Zap,
@@ -23,6 +24,7 @@ import {
   expenseCategoryLabel,
   formatDate,
   formatMoney,
+  sourceAmountLabel,
   todayISO,
 } from "../lib/utils";
 
@@ -54,10 +56,13 @@ const CATEGORY_STYLE: Record<
   },
 };
 
-function categoryStyle(value: string) {
-  const key = (value === "mesecni" ? "obaveze" : value) as FeroxCategory;
-  return CATEGORY_STYLE[key];
-}
+const HISTORY_STYLE: Record<string, { icon: LucideIcon; chip: string }> = {
+  ...CATEGORY_STYLE,
+  mesecni: CATEGORY_STYLE.obaveze,
+  plata: { icon: Users, chip: "bg-rose-600" },
+};
+
+const HISTORY_PAGE = 40;
 
 export function TroskoviPage({
   data,
@@ -72,6 +77,7 @@ export function TroskoviPage({
   const [addingSub, setAddingSub] = useState(false);
   const [newSub, setNewSub] = useState("");
   const [message, setMessage] = useState<string | null>(null);
+  const [shown, setShown] = useState(HISTORY_PAGE);
 
   const custom = category ? (customSubcategories[category] ?? []) : [];
   const defaults = category ? DEFAULT_SUBCATEGORIES[category] ?? [] : [];
@@ -336,7 +342,7 @@ export function TroskoviPage({
 
       <section className="space-y-2">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-          Istorija
+          Istorija ({expenses.length})
         </h2>
         {expenses.length === 0 ? (
           <Card>
@@ -344,8 +350,8 @@ export function TroskoviPage({
           </Card>
         ) : (
           <ul className="space-y-1.5">
-            {expenses.map((e) => {
-              const style = categoryStyle(e.category);
+            {expenses.slice(0, shown).map((e) => {
+              const style = HISTORY_STYLE[e.category];
               const Icon = style?.icon;
               return (
                 <li
@@ -373,6 +379,11 @@ export function TroskoviPage({
                     <p className="text-sm font-semibold tabular-nums">
                       {formatMoney(e.amount)}
                     </p>
+                    {sourceAmountLabel(e) ? (
+                      <p className="text-[10px] text-[var(--muted)]">
+                        {sourceAmountLabel(e)}
+                      </p>
+                    ) : null}
                     <button
                       type="button"
                       className="text-[11px] font-medium text-[var(--danger)]"
@@ -386,6 +397,17 @@ export function TroskoviPage({
             })}
           </ul>
         )}
+        {shown < expenses.length ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            className="w-full"
+            onClick={() => setShown((n) => n + HISTORY_PAGE)}
+          >
+            Prikaži još ({expenses.length - shown})
+          </Button>
+        ) : null}
       </section>
     </div>
   );

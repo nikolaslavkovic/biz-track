@@ -13,7 +13,7 @@ import {
   YAxis,
 } from "recharts";
 import { Card } from "./ui";
-import { formatMoney, cn } from "../lib/utils";
+import { formatCompactRsd, formatMoney, cn } from "../lib/utils";
 import type { OverviewPoint } from "../lib/data";
 
 function MoneyTooltip({
@@ -117,7 +117,7 @@ function useNarrow() {
 export function OverviewLineChart({ series }: { series: OverviewPoint[] }) {
   const narrow = useNarrow();
   const tick = { fill: "#5b6b76", fontSize: narrow ? 9 : 11 };
-  const yW = narrow ? 30 : 42;
+  const yW = narrow ? 38 : 46;
   const margin = narrow
     ? { top: 4, right: 4, left: -6, bottom: 0 }
     : { top: 8, right: 10, left: 0, bottom: 0 };
@@ -146,7 +146,7 @@ export function OverviewLineChart({ series }: { series: OverviewPoint[] }) {
               width={yW}
               tick={tick}
               tickCount={narrow ? 4 : 5}
-              tickFormatter={(v) => `${Math.round(Number(v) / 1000)}k`}
+              tickFormatter={(v) => formatCompactRsd(Number(v))}
             />
             <Tooltip content={<MoneyTooltip />} />
             <Legend
@@ -244,7 +244,7 @@ export function FinanceCharts({
 }) {
   const narrow = useNarrow();
   const tick = { fill: "#5b6b76", fontSize: narrow ? 9 : 11 };
-  const yW = narrow ? 28 : 40;
+  const yW = narrow ? 38 : 46;
   const margin = narrow
     ? { top: 2, right: 2, left: -8, bottom: 0 }
     : { top: 6, right: 8, left: 0, bottom: 0 };
@@ -274,7 +274,7 @@ export function FinanceCharts({
               <YAxis
                 width={yW}
                 tick={tick}
-                tickFormatter={(v) => `${Math.round(Number(v) / 1000)}k`}
+                tickFormatter={(v) => formatCompactRsd(Number(v))}
               />
               <Tooltip content={<MoneyTooltip />} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
@@ -312,7 +312,7 @@ export function FinanceCharts({
               <YAxis
                 width={yW}
                 tick={tick}
-                tickFormatter={(v) => `${Math.round(Number(v) / 1000)}k`}
+                tickFormatter={(v) => formatCompactRsd(Number(v))}
               />
               <Tooltip content={<MoneyTooltip />} />
               <Bar
@@ -339,7 +339,7 @@ export function HallCharts({
 }) {
   const narrow = useNarrow();
   const tick = { fill: "#5b6b76", fontSize: narrow ? 9 : 11 };
-  const yW = narrow ? 28 : 40;
+  const yW = narrow ? 38 : 46;
   const margin = narrow
     ? { top: 2, right: 2, left: -8, bottom: 0 }
     : { top: 6, right: 8, left: 0, bottom: 0 };
