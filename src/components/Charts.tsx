@@ -16,7 +16,7 @@ import { Card } from "./ui";
 import { formatCompactRsd, formatMoney, cn } from "../lib/utils";
 import type { OverviewPoint } from "../lib/data";
 
-function MoneyTooltip({
+export function MoneyTooltip({
   active,
   payload,
   label,
@@ -60,7 +60,7 @@ function CountTooltip({
   );
 }
 
-function ChartFrame({
+export function ChartFrame({
   height = 200,
   children,
 }: {
@@ -100,7 +100,7 @@ function ChartFrame({
   );
 }
 
-function useNarrow() {
+export function useNarrow() {
   const [narrow, setNarrow] = useState(
     () => typeof window !== "undefined" && window.innerWidth < 640,
   );

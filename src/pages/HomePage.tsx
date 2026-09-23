@@ -2,12 +2,14 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { OverviewLineChart, PeriodTabs } from "../components/Charts";
 import { DataImportCard } from "../components/DataImportCard";
+import { InsightsSection } from "../components/InsightsSection";
 import { Button } from "../components/ui";
 import {
   buildOverview,
   type DashboardData,
   type PeriodMode,
 } from "../lib/data";
+import { buildInsights } from "../lib/insights";
 import { formatCompactRsd, cn } from "../lib/utils";
 
 function MiniStat({
@@ -63,6 +65,7 @@ export function HomePage({
 }) {
   const [period, setPeriod] = useState<PeriodMode>("ukupno");
   const overview = buildOverview(data, period);
+  const insights = buildInsights(data);
 
   return (
     <div className="w-full min-w-0 max-w-full space-y-3">
@@ -114,6 +117,8 @@ export function HomePage({
       </section>
 
       <OverviewLineChart series={overview.series} />
+
+      {insights ? <InsightsSection insights={insights} /> : null}
 
       <DataImportCard incomes={data.incomes} onChange={onChange} />
     </div>
