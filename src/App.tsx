@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppNav } from "./components/AppNav";
 import { loadDashboardData, type DashboardData } from "./lib/data";
-import { seedIfEmpty } from "./seed";
+import { initDatabase } from "./seed";
 import { HomePage } from "./pages/HomePage";
 import { ProjektiPage } from "./pages/ProjektiPage";
 import { TroskoviPage } from "./pages/TroskoviPage";
@@ -17,7 +17,7 @@ export default function App() {
 
   useEffect(() => {
     void (async () => {
-      await seedIfEmpty();
+      await initDatabase();
       await refresh();
     })();
   }, []);
