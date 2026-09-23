@@ -35,7 +35,7 @@ export default function App() {
       <AppNav />
       <main className="mx-auto w-full min-w-0 max-w-6xl flex-1 overflow-x-hidden px-3 py-3 pb-28 sm:px-6 sm:py-8">
         <Routes>
-          <Route path="/" element={<HomePage data={data} />} />
+          <Route path="/" element={<HomePage data={data} onChange={refresh} />} />
           <Route
             path="/projekti"
             element={<ProjektiPage data={data} onChange={refresh} />}

@@ -234,7 +234,7 @@ export const FEROX_CATEGORIES = [
 
 export const EXPENSE_CATEGORIES = [
   ...FEROX_CATEGORIES,
-  { value: "plata", label: "Plata / isplata" },
+  { value: "plata", label: "Radnici (isplate)" },
   { value: "ostalo", label: "Ostalo" },
 ] as const;
 
@@ -268,4 +268,10 @@ export const SALE_CURRENCIES = [
 
 export function roofLabel(value: string | null | undefined): string {
   return ROOF_TYPES.find((r) => r.value === value)?.label ?? value ?? "—";
+}
+
+/** Originalni iznos u stranoj valuti, npr. „400 €“ — prazno za RSD */
+export function sourceAmountLabel(row: { sourceCurrency?: string; sourceAmount?: number }): string {
+  if (!row.sourceCurrency || row.sourceCurrency === "RSD" || !row.sourceAmount) return "";
+  return `${row.sourceAmount.toLocaleString("sr-RS")} ${row.sourceCurrency === "EUR" ? "€" : row.sourceCurrency}`;
 }

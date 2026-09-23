@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { OverviewLineChart, PeriodTabs } from "../components/Charts";
+import { DataImportCard } from "../components/DataImportCard";
 import { Button } from "../components/ui";
 import {
   buildOverview,
@@ -53,7 +54,13 @@ const PERIOD_HINT: Record<PeriodMode, string> = {
   godisnje: "Ova godina",
 };
 
-export function HomePage({ data }: { data: DashboardData }) {
+export function HomePage({
+  data,
+  onChange,
+}: {
+  data: DashboardData;
+  onChange: () => Promise<void>;
+}) {
   const [period, setPeriod] = useState<PeriodMode>("ukupno");
   const overview = buildOverview(data, period);
 
@@ -107,6 +114,8 @@ export function HomePage({ data }: { data: DashboardData }) {
       </section>
 
       <OverviewLineChart series={overview.series} />
+
+      <DataImportCard incomes={data.incomes} onChange={onChange} />
     </div>
   );
 }
