@@ -13,3 +13,4 @@ android/**/build
 *.apk
 .capacitor
 FirmaRacun-lokalno.zip
+.vercel
