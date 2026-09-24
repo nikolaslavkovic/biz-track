@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { OverviewLineChart, PeriodTabs } from "../components/Charts";
 import { DataImportCard } from "../components/DataImportCard";
 import { InsightsSection } from "../components/InsightsSection";
-import { UnitEconomicsCard } from "../components/UnitEconomicsCard";
 import { Button } from "../components/ui";
 import {
   buildOverview,
@@ -11,15 +10,17 @@ import {
   type PeriodMode,
 } from "../lib/data";
 import { buildInsights, buildUnitEconomics } from "../lib/insights";
-import { formatCompactRsd, cn } from "../lib/utils";
+import { formatCompactRsd, formatMoney, cn } from "../lib/utils";
 
 function MiniStat({
   label,
   value,
+  sub,
   tone = "default",
 }: {
   label: string;
   value: string;
+  sub?: string;
   tone?: "default" | "good" | "bad" | "accent" | "warn";
 }) {
   const toneClass =
@@ -46,6 +47,22 @@ function MiniStat({
       >
         {value}
       </p>
+      {sub ? <p className="truncate text-[10px] text-[var(--muted)]">{sub}</p> : null}
+    </div>
+  );
+}
+
+function SplitBar({ radnici, ostalo, neto }: { radnici: number; ostalo: number; neto: number }) {
+  const labor = Math.max(0, radnici);
+  const other = Math.max(0, ostalo);
+  const keep = Math.max(0, neto);
+  const sum = labor + other + keep;
+  if (!sum) return null;
+  return (
+    <div className="flex h-2 overflow-hidden rounded-full bg-[var(--surface-2)]">
+      {labor > 0 ? <div className="h-full bg-rose-500" style={{ width: `${(labor / sum) * 100}%` }} /> : null}
+      {other > 0 ? <div className="h-full bg-slate-400" style={{ width: `${(other / sum) * 100}%` }} /> : null}
+      {keep > 0 ? <div className="h-full bg-emerald-600" style={{ width: `${(keep / sum) * 100}%` }} /> : null}
     </div>
   );
 }
@@ -67,6 +84,12 @@ export function HomePage({
   const [period, setPeriod] = useState<PeriodMode>("ukupno");
   const overview = buildOverview(data, period);
   const insights = buildInsights(data);
+  const unit = buildUnitEconomics(
+    overview.prodaja,
+    overview.troskovi,
+    overview.radnici,
+    overview.hours,
+  );
 
   return (
     <div className="w-full min-w-0 max-w-full space-y-3">
@@ -115,23 +138,47 @@ export function HomePage({
           value={formatCompactRsd(overview.neto)}
           tone={overview.neto >= 0 ? "good" : "bad"}
         />
+        <MiniStat
+          label="Radnici na 100 RSD"
+          value={unit.per100 ? `${Math.round(unit.per100.radnici)} RSD` : "—"}
+          sub="od svakih 100 prodaje"
+          tone="warn"
+        />
+        <MiniStat
+          label="Tebi na 100 RSD"
+          value={unit.per100 ? `${Math.round(unit.per100.neto)} RSD` : "—"}
+          sub="od svakih 100 prodaje"
+          tone={unit.per100 && unit.per100.neto >= 0 ? "good" : "bad"}
+        />
+        <MiniStat
+          label="Radnici po satu"
+          value={unit.perHour ? formatMoney(unit.perHour.radnici) : "—"}
+          sub={unit.perHour ? `${unit.perHour.hours.toLocaleString("sr-RS")} unetih sati` : "nema unetih sati"}
+          tone="warn"
+        />
+        <MiniStat
+          label="Ti po satu"
+          value={unit.perHour ? formatMoney(unit.perHour.neto) : "—"}
+          sub={unit.perHour ? "neto zarada / sat" : "nema unetih sati"}
+          tone={unit.perHour && unit.perHour.neto >= 0 ? "good" : "bad"}
+        />
       </section>
 
-      <OverviewLineChart series={overview.series} />
+      {unit.per100 ? (
+        <div className="space-y-1">
+          <SplitBar
+            radnici={unit.per100.radnici}
+            ostalo={unit.per100.ostalo}
+            neto={unit.per100.neto}
+          />
+          <p className="text-[10px] text-[var(--muted)]">
+            Na 100 RSD prodaje: {Math.round(unit.per100.radnici)} radnici ·{" "}
+            {Math.round(unit.per100.ostalo)} ostalo · {Math.round(unit.per100.neto)} tebi
+          </p>
+        </div>
+      ) : null}
 
-      <UnitEconomicsCard
-        unit={buildUnitEconomics(
-          overview.prodaja,
-          overview.troskovi,
-          overview.radnici,
-          overview.hours,
-        )}
-        hint={
-          period === "ukupno"
-            ? "Na svim unosima: koliko od prodaje ide radnicima, koliko ostalim troškovima, koliko ostane tebi."
-            : "Za izabrani period: koliko od prodaje ide radnicima, koliko ostalim troškovima, koliko ostane tebi."
-        }
-      />
+      <OverviewLineChart series={overview.series} />
 
       {insights ? <InsightsSection insights={insights} /> : null}
 
