@@ -101,9 +101,8 @@ function resolve(t: FileTransaction): Resolved {
       ? (LEGACY_BUSINESS_CATEGORY[text(t.business_category)] ?? text(t.business_category))
       : MONEY_MANAGER_INCOME) ||
     "Ostalo";
-  const subcategory =
-    "original_subcategory" in t ? text(t.original_subcategory) : text(t.subcategory);
-  const note = "original_note" in t ? text(t.original_note) : text(t.note);
+  const subcategory = text(t.original_subcategory) || text(t.subcategory);
+  const note = text(t.original_note) || text(t.note);
   const parsed = parseCurrencyField(text(t.original_currency_field));
   const currency = text(t.source_currency) || parsed?.currency || "RSD";
   const sourceAmount = Number(t.source_amount) || parsed?.amount || amount;
