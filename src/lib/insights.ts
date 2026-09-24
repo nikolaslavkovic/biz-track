@@ -1,5 +1,5 @@
 import type { DashboardData } from "./data";
-import { earnedProjects, logCost } from "./data";
+import { earnedProjects, laborHours, logCost } from "./data";
 import { monthKey, projectRate, toRsd } from "./utils";
 
 export type MonthStat = {
@@ -271,7 +271,7 @@ export function buildInsights(data: DashboardData): Insights | null {
   }
   const totalRadnici = months.reduce((s, m) => s + m.radnici, 0);
   const totalOstalo = months.reduce((s, m) => s + m.troskovi, 0);
-  const totalHours = data.workLogs.reduce((s, l) => s + (Number(l.hours) || 0), 0);
+  const totalHours = laborHours(data.workLogs, data.expenses);
   const unit = buildUnitEconomics(totalProdaja, totalOstalo, totalRadnici, totalHours);
 
   if (unit.per100) {
@@ -283,7 +283,7 @@ export function buildInsights(data: DashboardData): Insights | null {
   if (unit.perHour) {
     const h = unit.perHour;
     summary.push(
-      `Po satu rada: radnicima ide ${Math.round(h.radnici).toLocaleString("sr-RS")} RSD, tebi ostane ${Math.round(h.neto).toLocaleString("sr-RS")} RSD.`,
+      `Po satu rada (${h.hours.toLocaleString("sr-RS", { maximumFractionDigits: 0 })} sati, ranije isplate po 1.000 RSD/h): radnicima ide ${Math.round(h.radnici).toLocaleString("sr-RS")} RSD, tebi ostane ${Math.round(h.neto).toLocaleString("sr-RS")} RSD.`,
     );
   }
   if (costs[0]) {

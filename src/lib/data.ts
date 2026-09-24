@@ -120,6 +120,21 @@ export function logCost(log: WorkLog, worker: Worker | undefined): number {
   return log.hours * (worker?.hourlyRate || 0) + (Number(log.adjustment) || 0);
 }
 
+/** Ranije isplate radnika nisu imale sate — satnica je uvek bila 1000 RSD. */
+export const LEGACY_WORKER_RATE = 1000;
+
+export function plataHours(expenses: Expense[]): number {
+  const plata = expenses
+    .filter((e) => e.category === "plata")
+    .reduce((s, e) => s + (Number(e.amount) || 0), 0);
+  return plata / LEGACY_WORKER_RATE;
+}
+
+export function laborHours(workLogs: WorkLog[], expenses: Expense[]): number {
+  const logged = workLogs.reduce((s, l) => s + (Number(l.hours) || 0), 0);
+  return logged + plataHours(expenses);
+}
+
 function expenseTroskovi(expenses: Expense[]): number {
   return expenses
     .filter((e) => e.category !== "plata")
@@ -155,7 +170,7 @@ function totalsFor(
     ) + incomes.reduce((s, i) => s + i.amount, 0);
   const troskovi = expenseTroskovi(expenses);
   const radnici = laborCost(workLogs, workerMap, expenses);
-  const hours = workLogs.reduce((s, l) => s + (Number(l.hours) || 0), 0);
+  const hours = laborHours(workLogs, expenses);
   return {
     prodaja,
     troskovi,
@@ -373,12 +388,11 @@ export async function loadDashboardData(): Promise<DashboardData> {
     .filter((e) => e.category === "obaveze")
     .reduce((s, e) => s + e.amount, 0);
 
-  let totalHours = 0;
   let laborFromLogs = 0;
   for (const log of workLogs) {
-    totalHours += log.hours;
     laborFromLogs += logCost(log, workerMap.get(log.workerId));
   }
+  const totalHours = laborHours(workLogs, expenses);
 
   const byWidth = new Map<
     string,

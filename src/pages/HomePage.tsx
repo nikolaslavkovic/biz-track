@@ -10,7 +10,7 @@ import {
   type PeriodMode,
 } from "../lib/data";
 import { buildInsights, buildUnitEconomics } from "../lib/insights";
-import { formatCompactRsd, formatMoney, cn } from "../lib/utils";
+import { formatCompactRsd, formatHours, formatMoney, cn } from "../lib/utils";
 
 function MiniStat({
   label,
@@ -153,13 +153,17 @@ export function HomePage({
         <MiniStat
           label="Radnici po satu"
           value={unit.perHour ? formatMoney(unit.perHour.radnici) : "—"}
-          sub={unit.perHour ? `${unit.perHour.hours.toLocaleString("sr-RS")} unetih sati` : "nema unetih sati"}
+          sub={
+            unit.perHour
+              ? `${formatHours(unit.perHour.hours)} · ranije 1.000 RSD/h`
+              : "nema sati ni isplata"
+          }
           tone="warn"
         />
         <MiniStat
           label="Ti po satu"
           value={unit.perHour ? formatMoney(unit.perHour.neto) : "—"}
-          sub={unit.perHour ? "neto zarada / sat" : "nema unetih sati"}
+          sub={unit.perHour ? "neto zarada / sat" : "nema sati ni isplata"}
           tone={unit.perHour && unit.perHour.neto >= 0 ? "good" : "bad"}
         />
       </section>
