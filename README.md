@@ -31,7 +31,7 @@ Gotovo. App je online.
 
 Svaki put kad push-uješ izmene na `main`, Vercel sam napravi novi deploy.
 
-Na početnoj strani uključi **Sinhronizaciju**, kopiraj šifru i unesi je na telefonu ili drugom računaru. Isti podaci su onda dostupni svuda, a app i dalje radi offline.
+Svi uređaji koji otvore isti link dele jednu onlajn bazu. Nema šifre ni ručne sinhronizacije — izmene se same čuvaju, a app i dalje radi offline.
 
 ---
 

@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppNav } from "./components/AppNav";
 import { loadDashboardData, type DashboardData } from "./lib/data";
-import { initCloudStatus, pullCloud, pushCloud, schedulePush } from "./lib/cloudSync";
+import { CloudBanner } from "./components/CloudBanner";
+import { initCloudStatus, schedulePush, syncNow } from "./lib/cloudSync";
 import { initDatabase } from "./seed";
 import { HomePage } from "./pages/HomePage";
 import { ProjektiPage } from "./pages/ProjektiPage";
@@ -25,17 +26,15 @@ export default function App() {
     void (async () => {
       await initDatabase();
       await initCloudStatus();
-      const pulled = await pullCloud();
-      if (pulled === "empty") await pushCloud(true);
+      await syncNow();
       await refresh();
     })();
   }, []);
 
   useEffect(() => {
     async function syncIfNeeded() {
-      const pulled = await pullCloud();
-      if (pulled === "updated") await refresh();
-      else if (pulled === "empty") await pushCloud(true);
+      const result = await syncNow();
+      if (result === "updated" || result === "merged") await refresh();
     }
     function onVisible() {
       if (document.visibilityState === "visible") void syncIfNeeded();
@@ -60,6 +59,7 @@ export default function App() {
     <div className="flex min-h-screen flex-col">
       <AppNav />
       <main className="mx-auto w-full min-w-0 max-w-6xl flex-1 overflow-x-hidden px-3 py-3 pb-28 sm:px-6 sm:py-8">
+        <CloudBanner />
         <Routes>
           <Route path="/" element={<HomePage data={data} onChange={persistChange} />} />
           <Route
@@ -78,7 +78,7 @@ export default function App() {
         </Routes>
       </main>
       <footer className="hidden border-t border-[var(--line)] py-4 pb-24 text-center text-xs text-[var(--muted)] lg:block">
-        FEROX konstrukcije · radi i offline · uključi sinhronizaciju da deliš podatke između uređaja
+        FEROX konstrukcije · isti podaci na svim uređajima · radi i offline
       </footer>
     </div>
   );

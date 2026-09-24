@@ -1,10 +1,7 @@
 import { db } from "../db";
-import { readSnapshot, snapshotIsEmpty, writeSnapshot, type AppSnapshot } from "./snapshot";
-
-const CODE_RE = /^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/;
+import { mergeSnapshots, readSnapshot, snapshotIsEmpty, writeSnapshot, type AppSnapshot } from "./snapshot";
 
 export type CloudStatus = {
-  code: string | null;
   lastSync: string | null;
   busy: boolean;
   error: string | null;
@@ -12,9 +9,10 @@ export type CloudStatus = {
 
 type CloudFile = { updatedAt: string; payload: AppSnapshot };
 
-let status: CloudStatus = { code: null, lastSync: null, busy: false, error: null };
+let status: CloudStatus = { lastSync: null, busy: false, error: null };
 const listeners = new Set<(s: CloudStatus) => void>();
 let pushTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingPush = false;
 
 function emit() {
   const snap = { ...status };
@@ -38,38 +36,15 @@ export function getCloudStatus() {
   return { ...status };
 }
 
-export function generateCloudCode(): string {
-  const bytes = new Uint8Array(6);
-  crypto.getRandomValues(bytes);
-  const hex = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
-  return `${hex.slice(0, 4)}-${hex.slice(4, 8)}-${hex.slice(8, 12)}`;
-}
-
-export function normalizeCloudCode(value: string): string {
-  return value.trim().toLowerCase().replace(/\s+/g, "");
-}
-
-async function loadLocalLink() {
-  const [code, last] = await Promise.all([
-    db.settings.get("cloud_code"),
-    db.settings.get("cloud_updated_at"),
-  ]);
-  setStatus({
-    code: code?.value && CODE_RE.test(code.value) ? code.value : null,
-    lastSync: last?.value ?? null,
-  });
-}
-
 export async function initCloudStatus() {
-  await loadLocalLink();
+  const last = await db.settings.get("cloud_updated_at");
+  setStatus({ lastSync: last?.value ?? null });
 }
 
-async function saveLink(code: string | null, updatedAt: string | null) {
-  if (code) await db.settings.put({ key: "cloud_code", value: code });
-  else await db.settings.delete("cloud_code");
+async function saveLastSync(updatedAt: string | null) {
   if (updatedAt) await db.settings.put({ key: "cloud_updated_at", value: updatedAt });
   else await db.settings.delete("cloud_updated_at");
-  setStatus({ code, lastSync: updatedAt, error: null });
+  setStatus({ lastSync: updatedAt, error: null });
 }
 
 async function request(path: string, init?: RequestInit) {
@@ -81,23 +56,28 @@ async function request(path: string, init?: RequestInit) {
   return { res, data };
 }
 
-export async function pullCloud(): Promise<"empty" | "updated" | "same" | "offline"> {
-  if (!status.code) return "offline";
+export async function pullCloud(): Promise<"empty" | "updated" | "same" | "merged" | "offline"> {
   setStatus({ busy: true, error: null });
   try {
-    const { res, data } = await request(`/api/sync?code=${encodeURIComponent(status.code)}`);
-    if (res.status === 404) {
+    const { res, data } = await request("/api/sync");
+    if (res.status === 404 || !data.payload) {
       setStatus({ busy: false });
       return "empty";
     }
-    if (!res.ok || !data.payload) throw new Error(data.error || "Preuzimanje nije uspelo.");
     const localAt = status.lastSync;
     if (localAt && data.updatedAt <= localAt) {
       setStatus({ busy: false });
       return "same";
     }
+    const local = await readSnapshot();
+    if (!localAt && !snapshotIsEmpty(local) && !snapshotIsEmpty(data.payload)) {
+      await writeSnapshot(mergeSnapshots(local, data.payload));
+      await saveLastSync(data.updatedAt);
+      setStatus({ busy: false });
+      return "merged";
+    }
     await writeSnapshot(data.payload);
-    await saveLink(status.code, data.updatedAt);
+    await saveLastSync(data.updatedAt);
     setStatus({ busy: false });
     return "updated";
   } catch (err) {
@@ -110,7 +90,6 @@ export async function pullCloud(): Promise<"empty" | "updated" | "same" | "offli
 }
 
 export async function pushCloud(force = false): Promise<boolean> {
-  if (!status.code) return false;
   setStatus({ busy: true, error: null });
   try {
     const payload = await readSnapshot();
@@ -118,19 +97,23 @@ export async function pushCloud(force = false): Promise<boolean> {
     const { res, data } = await request("/api/sync", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code: status.code, updatedAt, payload }),
+      body: JSON.stringify({ updatedAt, payload, force }),
     });
     if (res.status === 409 && data.payload && !force) {
-      await writeSnapshot(data.payload);
-      await saveLink(status.code, data.updatedAt);
+      const local = await readSnapshot();
+      await writeSnapshot(mergeSnapshots(local, data.payload));
+      await saveLastSync(data.updatedAt);
       setStatus({ busy: false });
+      pendingPush = true;
+      schedulePush();
       return true;
     }
     if (!res.ok) throw new Error(data.error || "Slanje nije uspelo.");
-    await saveLink(status.code, updatedAt);
+    await saveLastSync(updatedAt);
     setStatus({ busy: false });
     return true;
   } catch (err) {
+    pendingPush = true;
     setStatus({
       busy: false,
       error: err instanceof Error ? err.message : "Nema veze sa serverom.",
@@ -140,36 +123,21 @@ export async function pushCloud(force = false): Promise<boolean> {
 }
 
 export function schedulePush() {
-  if (!status.code) return;
+  pendingPush = true;
   if (pushTimer) clearTimeout(pushTimer);
   pushTimer = setTimeout(() => {
+    pendingPush = false;
     void pushCloud();
-  }, 1200);
+  }, 800);
 }
 
-export async function enableCloud(): Promise<string> {
-  const code = generateCloudCode();
-  await saveLink(code, null);
-  const snapshot = await readSnapshot();
-  if (!snapshotIsEmpty(snapshot)) await pushCloud(true);
-  return code;
-}
-
-export async function joinCloud(raw: string): Promise<"updated" | "empty"> {
-  const code = normalizeCloudCode(raw);
-  if (!CODE_RE.test(code)) throw new Error("Šifra mora biti u obliku ab12-cd34-ef56.");
-  await saveLink(code, null);
-  const result = await pullCloud();
-  if (result === "empty") {
-    const snapshot = await readSnapshot();
-    if (!snapshotIsEmpty(snapshot)) await pushCloud(true);
-    return "empty";
+export async function syncNow(): Promise<"updated" | "same" | "empty" | "merged" | "offline"> {
+  const pulled = await pullCloud();
+  if (pulled === "offline") {
+    if (pendingPush) void pushCloud();
+    return pulled;
   }
-  if (result === "offline") throw new Error(status.error || "Nema veze.");
-  return "updated";
-}
-
-export async function disableCloud() {
-  if (pushTimer) clearTimeout(pushTimer);
-  await saveLink(null, null);
+  if (pulled === "updated") return pulled;
+  await pushCloud(pulled === "empty" || pulled === "merged");
+  return pulled;
 }

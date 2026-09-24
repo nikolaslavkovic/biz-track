@@ -1,8 +1,8 @@
 import { BlobNotFoundError, get, put } from "@vercel/blob";
 
-type Body = { code?: string; updatedAt?: string; payload?: unknown };
+type Body = { updatedAt?: string; payload?: unknown; force?: boolean };
 
-const CODE = /^[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/;
+const WORKSPACE = "default";
 
 function cors(res: { setHeader: (k: string, v: string) => void }) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -10,13 +10,13 @@ function cors(res: { setHeader: (k: string, v: string) => void }) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 }
 
-function pathFor(code: string) {
-  return `workspaces/${code}.json`;
+function pathFor() {
+  return `workspaces/${WORKSPACE}.json`;
 }
 
-async function readWorkspace(code: string): Promise<{ updatedAt: string; payload: unknown } | null> {
+async function readWorkspace(): Promise<{ updatedAt: string; payload: unknown } | null> {
   try {
-    const result = await get(pathFor(code), { access: "private", useCache: false });
+    const result = await get(pathFor(), { access: "private", useCache: false });
     if (!result || result.statusCode !== 200) return null;
     const text = await new Response(result.stream).text();
     return JSON.parse(text) as { updatedAt: string; payload: unknown };
@@ -27,7 +27,7 @@ async function readWorkspace(code: string): Promise<{ updatedAt: string; payload
 }
 
 export default async function handler(
-  req: { method?: string; query: { code?: string }; body?: Body },
+  req: { method?: string; query: { code?: string }; body?: Body | string },
   res: {
     setHeader: (k: string, v: string) => void;
     status: (n: number) => { json: (o: unknown) => void; end: () => void };
@@ -47,14 +47,9 @@ export default async function handler(
 
   try {
     if (req.method === "GET") {
-      const code = String(req.query.code || "").toLowerCase();
-      if (!CODE.test(code)) {
-        res.status(400).json({ error: "Neispravna šifra." });
-        return;
-      }
-      const data = await readWorkspace(code);
+      const data = await readWorkspace();
       if (!data) {
-        res.status(404).json({ error: "Nema podataka za ovu šifru." });
+        res.status(404).json({ error: "Nema još sačuvanih podataka." });
         return;
       }
       res.status(200).json(data);
@@ -64,14 +59,13 @@ export default async function handler(
     if (req.method === "PUT") {
       const raw = req.body;
       const body = (typeof raw === "string" ? (JSON.parse(raw) as Body) : (raw ?? {})) as Body;
-      const code = String(body.code || "").toLowerCase();
       const updatedAt = String(body.updatedAt || "");
-      if (!CODE.test(code) || !updatedAt || body.payload == null) {
-        res.status(400).json({ error: "Nedostaje šifra ili podaci." });
+      if (!updatedAt || body.payload == null) {
+        res.status(400).json({ error: "Nedostaju podaci." });
         return;
       }
-      const current = await readWorkspace(code);
-      if (current && current.updatedAt > updatedAt) {
+      const current = await readWorkspace();
+      if (current && current.updatedAt > updatedAt && !body.force) {
         res.status(409).json({
           error: "Na serveru je novija verzija.",
           ...current,
@@ -79,7 +73,7 @@ export default async function handler(
         return;
       }
       const next = { updatedAt, payload: body.payload };
-      await put(pathFor(code), JSON.stringify(next), {
+      await put(pathFor(), JSON.stringify(next), {
         access: "private",
         addRandomSuffix: false,
         allowOverwrite: true,
@@ -93,6 +87,6 @@ export default async function handler(
     res.status(405).json({ error: "Metoda nije dozvoljena." });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Greška pri sinhronizaciji." });
+    res.status(500).json({ error: "Greška pri čuvanju podataka." });
   }
 }
