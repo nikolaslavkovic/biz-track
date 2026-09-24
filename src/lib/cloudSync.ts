@@ -70,7 +70,7 @@ export async function pullCloud(): Promise<"empty" | "updated" | "same" | "merge
       return "same";
     }
     const local = await readSnapshot();
-    if (!localAt && !snapshotIsEmpty(local) && !snapshotIsEmpty(data.payload)) {
+    if (!snapshotIsEmpty(local) && !snapshotIsEmpty(data.payload)) {
       await writeSnapshot(mergeSnapshots(local, data.payload));
       await saveLastSync(data.updatedAt);
       setStatus({ busy: false });
