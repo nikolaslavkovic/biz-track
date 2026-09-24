@@ -89,6 +89,7 @@ export function HomePage({
     overview.troskovi,
     overview.radnici,
     overview.hours,
+    overview.days,
   );
 
   return (
@@ -161,10 +162,22 @@ export function HomePage({
           tone="warn"
         />
         <MiniStat
-          label="Ti po satu"
+          label="Ti po satu rada"
           value={unit.perHour ? formatMoney(unit.perHour.neto) : "—"}
-          sub={unit.perHour ? "neto zarada / sat" : "nema sati ni isplata"}
+          sub={unit.perHour ? "po satu jednog radnika" : "nema sati ni isplata"}
           tone={unit.perHour && unit.perHour.neto >= 0 ? "good" : "bad"}
+        />
+        <MiniStat
+          label="Ti po satu (2 radnika)"
+          value={unit.perHourCrew != null ? formatMoney(unit.perHourCrew) : "—"}
+          sub="kad rade dvojica odjednom"
+          tone={unit.perHourCrew != null && unit.perHourCrew >= 0 ? "good" : "bad"}
+        />
+        <MiniStat
+          label="Prosečan dnevni neto"
+          value={unit.avgDaily ? formatMoney(unit.avgDaily.neto) : "—"}
+          sub={unit.avgDaily ? `${unit.avgDaily.days} dana u periodu` : "nema perioda"}
+          tone={unit.avgDaily && unit.avgDaily.neto >= 0 ? "good" : "bad"}
         />
       </section>
 

@@ -14,6 +14,7 @@ import {
   monthKey,
   projectRate,
   toRsd,
+  todayISO,
   weekEndISO,
   weekStartISO,
 } from "./utils";
@@ -35,6 +36,7 @@ export type OverviewSlice = {
   radnici: number;
   neto: number;
   hours: number;
+  days: number;
   series: OverviewPoint[];
 };
 
@@ -154,6 +156,46 @@ function filterByRange<T extends { date?: string } | Project>(
   });
 }
 
+export function daysInclusive(start: string, end: string): number {
+  const a = new Date(`${start.slice(0, 10)}T12:00:00`).getTime();
+  const b = new Date(`${end.slice(0, 10)}T12:00:00`).getTime();
+  if (!Number.isFinite(a) || !Number.isFinite(b) || b < a) return 1;
+  return Math.round((b - a) / 86_400_000) + 1;
+}
+
+function firstActivityDate(data: {
+  projects: Project[];
+  incomes: Income[];
+  expenses: Expense[];
+  workLogs: WorkLog[];
+}): string | null {
+  const dates = [
+    ...data.incomes.map((i) => i.date),
+    ...data.expenses.map((e) => e.date),
+    ...data.workLogs.map((l) => l.date),
+    ...earnedProjects(data.projects).map(projectDate),
+  ]
+    .map((d) => (d || "").slice(0, 10))
+    .filter((d) => d.length === 10)
+    .sort();
+  return dates[0] ?? null;
+}
+
+function periodDayCount(
+  start: string | null,
+  end: string | null,
+  data: DashboardData,
+): number {
+  const today = todayISO();
+  if (start && end) {
+    const last = end < today ? end : today;
+    return daysInclusive(start, last);
+  }
+  const first = firstActivityDate(data);
+  if (!first) return 1;
+  return daysInclusive(first, today);
+}
+
 function totalsFor(
   projects: Project[],
   incomes: Income[],
@@ -161,7 +203,7 @@ function totalsFor(
   workLogs: WorkLog[],
   workerMap: Map<number, Worker>,
   eurToRsd: number,
-): Omit<OverviewSlice, "series"> {
+): Omit<OverviewSlice, "series" | "days"> {
   const prodaja =
     projects.reduce(
       (s, p) =>
@@ -323,6 +365,7 @@ export function buildOverview(
 
   return {
     ...totals,
+    days: periodDayCount(start, end, data),
     series: buildSeries(
       mode,
       earned,

@@ -1,6 +1,6 @@
 import type { DashboardData } from "./data";
-import { earnedProjects, laborHours, logCost } from "./data";
-import { monthKey, projectRate, toRsd } from "./utils";
+import { daysInclusive, earnedProjects, laborHours, logCost } from "./data";
+import { monthKey, projectRate, toRsd, todayISO } from "./utils";
 
 export type MonthStat = {
   key: string;
@@ -21,9 +21,14 @@ export type MonthStat = {
 
 export type CostSlice = { key: string; label: string; amount: number; share: number };
 
+export const TYPICAL_CREW = 2;
+
 export type UnitEconomics = {
   per100: { radnici: number; ostalo: number; neto: number } | null;
   perHour: { hours: number; prodaja: number; radnici: number; ostalo: number; neto: number } | null;
+  /** Neto po satu dok rade TYPICAL_CREW radnika odjednom */
+  perHourCrew: number | null;
+  avgDaily: { days: number; neto: number } | null;
 };
 
 export function buildUnitEconomics(
@@ -31,8 +36,11 @@ export function buildUnitEconomics(
   ostalo: number,
   radnici: number,
   hours: number,
+  days = 0,
+  crew = TYPICAL_CREW,
 ): UnitEconomics {
   const neto = prodaja - ostalo - radnici;
+  const crewHours = hours / Math.max(1, crew);
   return {
     per100:
       prodaja > 0
@@ -52,6 +60,8 @@ export function buildUnitEconomics(
             neto: neto / hours,
           }
         : null,
+    perHourCrew: crewHours > 0 ? neto / crewHours : null,
+    avgDaily: days > 0 ? { days, neto: neto / days } : null,
   };
 }
 
@@ -272,7 +282,9 @@ export function buildInsights(data: DashboardData): Insights | null {
   const totalRadnici = months.reduce((s, m) => s + m.radnici, 0);
   const totalOstalo = months.reduce((s, m) => s + m.troskovi, 0);
   const totalHours = laborHours(data.workLogs, data.expenses);
-  const unit = buildUnitEconomics(totalProdaja, totalOstalo, totalRadnici, totalHours);
+  const firstKey = months[0]?.key;
+  const spanDays = firstKey ? daysInclusive(`${firstKey}-01`, todayISO()) : 0;
+  const unit = buildUnitEconomics(totalProdaja, totalOstalo, totalRadnici, totalHours, spanDays);
 
   if (unit.per100) {
     const r = unit.per100;
@@ -283,7 +295,17 @@ export function buildInsights(data: DashboardData): Insights | null {
   if (unit.perHour) {
     const h = unit.perHour;
     summary.push(
-      `Po satu rada (${h.hours.toLocaleString("sr-RS", { maximumFractionDigits: 0 })} sati, ranije isplate po 1.000 RSD/h): radnicima ide ${Math.round(h.radnici).toLocaleString("sr-RS")} RSD, tebi ostane ${Math.round(h.neto).toLocaleString("sr-RS")} RSD.`,
+      `Po satu jednog radnika (${h.hours.toLocaleString("sr-RS", { maximumFractionDigits: 0 })} sati, ranije isplate po 1.000 RSD/h): radnicima ide ${Math.round(h.radnici).toLocaleString("sr-RS")} RSD, tebi ostane ${Math.round(h.neto).toLocaleString("sr-RS")} RSD.`,
+    );
+  }
+  if (unit.perHourCrew != null) {
+    summary.push(
+      `Kad rade ${TYPICAL_CREW} radnika odjednom, tebi ostane ${Math.round(unit.perHourCrew).toLocaleString("sr-RS")} RSD po satu.`,
+    );
+  }
+  if (unit.avgDaily) {
+    summary.push(
+      `Prosečan dnevni neto je ${Math.round(unit.avgDaily.neto).toLocaleString("sr-RS")} RSD (${unit.avgDaily.days} dana).`,
     );
   }
   if (costs[0]) {
