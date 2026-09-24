@@ -3,13 +3,14 @@ import { Link } from "react-router-dom";
 import { OverviewLineChart, PeriodTabs } from "../components/Charts";
 import { DataImportCard } from "../components/DataImportCard";
 import { InsightsSection } from "../components/InsightsSection";
+import { UnitEconomicsCard } from "../components/UnitEconomicsCard";
 import { Button } from "../components/ui";
 import {
   buildOverview,
   type DashboardData,
   type PeriodMode,
 } from "../lib/data";
-import { buildInsights } from "../lib/insights";
+import { buildInsights, buildUnitEconomics } from "../lib/insights";
 import { formatCompactRsd, cn } from "../lib/utils";
 
 function MiniStat({
@@ -117,6 +118,20 @@ export function HomePage({
       </section>
 
       <OverviewLineChart series={overview.series} />
+
+      <UnitEconomicsCard
+        unit={buildUnitEconomics(
+          overview.prodaja,
+          overview.troskovi,
+          overview.radnici,
+          overview.hours,
+        )}
+        hint={
+          period === "ukupno"
+            ? "Na svim unosima: koliko od prodaje ide radnicima, koliko ostalim troškovima, koliko ostane tebi."
+            : "Za izabrani period: koliko od prodaje ide radnicima, koliko ostalim troškovima, koliko ostane tebi."
+        }
+      />
 
       {insights ? <InsightsSection insights={insights} /> : null}
 

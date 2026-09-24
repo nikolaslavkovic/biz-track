@@ -34,6 +34,7 @@ export type OverviewSlice = {
   troskovi: number;
   radnici: number;
   neto: number;
+  hours: number;
   series: OverviewPoint[];
 };
 
@@ -154,11 +155,13 @@ function totalsFor(
     ) + incomes.reduce((s, i) => s + i.amount, 0);
   const troskovi = expenseTroskovi(expenses);
   const radnici = laborCost(workLogs, workerMap, expenses);
+  const hours = workLogs.reduce((s, l) => s + (Number(l.hours) || 0), 0);
   return {
     prodaja,
     troskovi,
     radnici,
     neto: prodaja - troskovi - radnici,
+    hours,
   };
 }
 

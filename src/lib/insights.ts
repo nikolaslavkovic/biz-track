@@ -21,6 +21,40 @@ export type MonthStat = {
 
 export type CostSlice = { key: string; label: string; amount: number; share: number };
 
+export type UnitEconomics = {
+  per100: { radnici: number; ostalo: number; neto: number } | null;
+  perHour: { hours: number; prodaja: number; radnici: number; ostalo: number; neto: number } | null;
+};
+
+export function buildUnitEconomics(
+  prodaja: number,
+  ostalo: number,
+  radnici: number,
+  hours: number,
+): UnitEconomics {
+  const neto = prodaja - ostalo - radnici;
+  return {
+    per100:
+      prodaja > 0
+        ? {
+            radnici: (radnici / prodaja) * 100,
+            ostalo: (ostalo / prodaja) * 100,
+            neto: (neto / prodaja) * 100,
+          }
+        : null,
+    perHour:
+      hours > 0
+        ? {
+            hours,
+            prodaja: prodaja / hours,
+            radnici: radnici / hours,
+            ostalo: ostalo / hours,
+            neto: neto / hours,
+          }
+        : null,
+  };
+}
+
 export type Insights = {
   months: MonthStat[];
   fullMonthCount: number;
@@ -39,6 +73,7 @@ export type Insights = {
   yearProjection: number | null;
   avgSaleValue: number | null;
   costs: CostSlice[];
+  unit: UnitEconomics;
   summary: string[];
 };
 
@@ -234,9 +269,21 @@ export function buildInsights(data: DashboardData): Insights | null {
       `Prodaja je ${ch >= 0 ? "porasla" : "pala"} ${Math.abs(ch).toFixed(0)}% u istom poređenju.`,
     );
   }
-  if (marza != null) {
+  const totalRadnici = months.reduce((s, m) => s + m.radnici, 0);
+  const totalOstalo = months.reduce((s, m) => s + m.troskovi, 0);
+  const totalHours = data.workLogs.reduce((s, l) => s + (Number(l.hours) || 0), 0);
+  const unit = buildUnitEconomics(totalProdaja, totalOstalo, totalRadnici, totalHours);
+
+  if (unit.per100) {
+    const r = unit.per100;
     summary.push(
-      `Od svakih 100 dinara prodaje ostaje ti oko ${Math.max(0, marza).toFixed(0)} dinara neto.`,
+      `Od 100 dinara prodaje: ${Math.max(0, r.radnici).toFixed(0)} ide radnicima, ${Math.max(0, r.ostalo).toFixed(0)} ostalim troškovima, tebi ostane ${r.neto.toFixed(0)}.`,
+    );
+  }
+  if (unit.perHour) {
+    const h = unit.perHour;
+    summary.push(
+      `Po satu rada: radnicima ide ${Math.round(h.radnici).toLocaleString("sr-RS")} RSD, tebi ostane ${Math.round(h.neto).toLocaleString("sr-RS")} RSD.`,
     );
   }
   if (costs[0]) {
@@ -261,6 +308,7 @@ export function buildInsights(data: DashboardData): Insights | null {
     yearProjection,
     avgSaleValue: saleCount ? saleSum / saleCount : null,
     costs,
+    unit,
     summary,
   };
 }
