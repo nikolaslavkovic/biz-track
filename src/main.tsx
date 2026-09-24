@@ -21,9 +21,10 @@ if (import.meta.env.DEV) {
 } else {
   // Production: nova verzija se automatski aktivira i osvežava stranicu
   void import("virtual:pwa-register").then(({ registerSW }) => {
-    registerSW({
+    const updateSW = registerSW({
       immediate: true,
       onNeedRefresh() {
+        void updateSW(true);
         window.location.reload();
       },
       onOfflineReady() {

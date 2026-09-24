@@ -23,16 +23,17 @@ export default function App() {
   }
 
   useEffect(() => {
+    let ready = false;
     void (async () => {
       await initDatabase();
       await initCloudStatus();
       await syncNow();
       await refresh();
+      ready = true;
     })();
-  }, []);
 
-  useEffect(() => {
     async function syncIfNeeded() {
+      if (!ready) return;
       const result = await syncNow();
       if (result === "updated" || result === "merged") await refresh();
     }

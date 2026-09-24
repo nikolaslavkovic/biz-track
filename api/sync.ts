@@ -8,6 +8,16 @@ function cors(res: { setHeader: (k: string, v: string) => void }) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,PUT,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+}
+
+function recordCount(payload: unknown): number {
+  if (!payload || typeof payload !== "object") return 0;
+  const row = payload as Record<string, unknown>;
+  return ["projects", "workers", "workLogs", "expenses", "incomes"].reduce((n, key) => {
+    const value = row[key];
+    return n + (Array.isArray(value) ? value.length : 0);
+  }, 0);
 }
 
 function pathFor() {
@@ -65,6 +75,13 @@ export default async function handler(
         return;
       }
       const current = await readWorkspace();
+      if (current && recordCount(body.payload) === 0 && recordCount(current.payload) > 0) {
+        res.status(409).json({
+          error: "Prazan unos ne sme da obriše onlajn bazu.",
+          ...current,
+        });
+        return;
+      }
       if (current && current.updatedAt > updatedAt && !body.force) {
         res.status(409).json({
           error: "Na serveru je novija verzija.",

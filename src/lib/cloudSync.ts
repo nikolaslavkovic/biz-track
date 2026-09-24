@@ -13,6 +13,7 @@ let status: CloudStatus = { lastSync: null, busy: false, error: null };
 const listeners = new Set<(s: CloudStatus) => void>();
 let pushTimer: ReturnType<typeof setTimeout> | null = null;
 let pendingPush = false;
+let chain: Promise<unknown> = Promise.resolve();
 
 function emit() {
   const snap = { ...status };
@@ -48,7 +49,15 @@ async function saveLastSync(updatedAt: string | null) {
 }
 
 async function request(path: string, init?: RequestInit) {
-  const res = await fetch(path, init);
+  const sep = path.includes("?") ? "&" : "?";
+  const res = await fetch(`${path}${sep}t=${Date.now()}`, {
+    cache: "no-store",
+    ...init,
+    headers: {
+      ...init?.headers,
+      "Cache-Control": "no-store",
+    },
+  });
   const data = (await res.json().catch(() => ({}))) as CloudFile & { error?: string };
   if (!res.ok && res.status !== 404 && res.status !== 409) {
     throw new Error(data.error || `Greška ${res.status}`);
@@ -56,30 +65,34 @@ async function request(path: string, init?: RequestInit) {
   return { res, data };
 }
 
+function remoteEmpty(payload?: AppSnapshot | null) {
+  return !payload || snapshotIsEmpty(payload);
+}
+
 export async function pullCloud(): Promise<"empty" | "updated" | "same" | "merged" | "offline"> {
   setStatus({ busy: true, error: null });
   try {
     const { res, data } = await request("/api/sync");
-    if (res.status === 404 || !data.payload) {
+    if (res.status === 404 || remoteEmpty(data.payload)) {
       setStatus({ busy: false });
       return "empty";
+    }
+    const local = await readSnapshot();
+    if (snapshotIsEmpty(local)) {
+      await writeSnapshot(data.payload);
+      await saveLastSync(data.updatedAt);
+      setStatus({ busy: false });
+      return "updated";
     }
     const localAt = status.lastSync;
     if (localAt && data.updatedAt <= localAt) {
       setStatus({ busy: false });
       return "same";
     }
-    const local = await readSnapshot();
-    if (!snapshotIsEmpty(local) && !snapshotIsEmpty(data.payload)) {
-      await writeSnapshot(mergeSnapshots(local, data.payload));
-      await saveLastSync(data.updatedAt);
-      setStatus({ busy: false });
-      return "merged";
-    }
-    await writeSnapshot(data.payload);
+    await writeSnapshot(mergeSnapshots(local, data.payload));
     await saveLastSync(data.updatedAt);
     setStatus({ busy: false });
-    return "updated";
+    return "merged";
   } catch (err) {
     setStatus({
       busy: false,
@@ -90,22 +103,27 @@ export async function pullCloud(): Promise<"empty" | "updated" | "same" | "merge
 }
 
 export async function pushCloud(force = false): Promise<boolean> {
+  const payload = await readSnapshot();
+  if (snapshotIsEmpty(payload)) return false;
   setStatus({ busy: true, error: null });
   try {
-    const payload = await readSnapshot();
     const updatedAt = new Date().toISOString();
     const { res, data } = await request("/api/sync", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ updatedAt, payload, force }),
     });
-    if (res.status === 409 && data.payload && !force) {
+    if (res.status === 409 && data.payload) {
       const local = await readSnapshot();
-      await writeSnapshot(mergeSnapshots(local, data.payload));
-      await saveLastSync(data.updatedAt);
+      if (!remoteEmpty(data.payload)) {
+        await writeSnapshot(snapshotIsEmpty(local) ? data.payload : mergeSnapshots(local, data.payload));
+        await saveLastSync(data.updatedAt);
+      }
       setStatus({ busy: false });
-      pendingPush = true;
-      schedulePush();
+      if (!snapshotIsEmpty(await readSnapshot()) && !force) {
+        pendingPush = true;
+        schedulePush();
+      }
       return true;
     }
     if (!res.ok) throw new Error(data.error || "Slanje nije uspelo.");
@@ -131,13 +149,28 @@ export function schedulePush() {
   }, 800);
 }
 
-export async function syncNow(): Promise<"updated" | "same" | "empty" | "merged" | "offline"> {
+async function runSync(): Promise<"updated" | "same" | "empty" | "merged" | "offline"> {
   const pulled = await pullCloud();
   if (pulled === "offline") {
     if (pendingPush) void pushCloud();
     return pulled;
   }
-  if (pulled === "updated") return pulled;
-  await pushCloud(pulled === "empty" || pulled === "merged");
+  const local = await readSnapshot();
+  if (pulled === "empty") {
+    if (!snapshotIsEmpty(local)) await pushCloud(true);
+    return pulled;
+  }
+  if (pulled === "merged" || pulled === "same") {
+    if (!snapshotIsEmpty(local)) await pushCloud(pulled === "merged");
+  }
   return pulled;
+}
+
+export function syncNow(): Promise<"updated" | "same" | "empty" | "merged" | "offline"> {
+  const next = chain.then(runSync, runSync);
+  chain = next.then(
+    () => undefined,
+    () => undefined,
+  );
+  return next;
 }

@@ -50,6 +50,7 @@ export default defineConfig({
         ],
       },
       workbox: {
+        cacheId: "ferox-cloud-v2",
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
         navigateFallback: "index.html",
         navigateFallbackDenylist: [/^\/api\//],
