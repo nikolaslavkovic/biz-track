@@ -38,7 +38,7 @@ export function AppNav() {
                 FEROX <span className="font-normal">konstrukcije</span>
               </div>
               <div className="truncate text-[11px] text-[var(--muted)] sm:text-xs">
-                Podaci u browseru
+                Online sinhronizacija · radi i offline
               </div>
             </div>
           </Link>
