@@ -96,6 +96,11 @@ function projectDate(p: Project): string {
   return (p.endDate || p.startDate || "").slice(0, 10);
 }
 
+/** Cena hale postaje zarada tek kad je hala označena kao gotova (na datum završetka) */
+export function earnedProjects(projects: Project[]): Project[] {
+  return projects.filter((p) => p.status === "zavrsen");
+}
+
 function laborCost(
   workLogs: WorkLog[],
   workerMap: Map<number, Worker>,
@@ -283,7 +288,8 @@ export function buildOverview(
     end = `${y}-12-31`;
   }
 
-  const projects = filterByRange(data.projects, start, end, projectDate);
+  const earned = earnedProjects(data.projects);
+  const projects = filterByRange(earned, start, end, projectDate);
   const incomes = filterByRange(data.incomes, start, end, (i) => i.date);
   const expenses = filterByRange(data.expenses, start, end, (e) => e.date);
   const workLogs = filterByRange(data.workLogs, start, end, (w) => w.date);
@@ -301,7 +307,7 @@ export function buildOverview(
     ...totals,
     series: buildSeries(
       mode,
-      data.projects,
+      earned,
       data.incomes,
       data.expenses,
       data.workLogs,

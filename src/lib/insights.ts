@@ -1,5 +1,5 @@
 import type { DashboardData } from "./data";
-import { logCost } from "./data";
+import { earnedProjects, logCost } from "./data";
 import { monthKey, projectRate, toRsd } from "./utils";
 
 export type MonthStat = {
@@ -89,12 +89,13 @@ function projectDate(p: { endDate: string | null; startDate: string }): string {
 export function buildInsights(data: DashboardData): Insights | null {
   const workerMap = new Map(data.workers.map((w) => [w.id!, w]));
   const current = currentMonthKey();
+  const earned = earnedProjects(data.projects);
 
   const dates = [
     ...data.incomes.map((i) => i.date),
     ...data.expenses.map((e) => e.date),
     ...data.workLogs.map((l) => l.date),
-    ...data.projects.map(projectDate),
+    ...earned.map(projectDate),
   ].filter(Boolean);
   if (!dates.length) return null;
 
@@ -121,7 +122,7 @@ export function buildInsights(data: DashboardData): Insights | null {
       saleCount += 1;
     }
   }
-  for (const p of data.projects) {
+  for (const p of earned) {
     const b = buckets.get(monthKey(projectDate(p)));
     if (!b) continue;
     const value = toRsd(p.revenue, p.revenueCurrency, projectRate(p, data.eurToRsd));

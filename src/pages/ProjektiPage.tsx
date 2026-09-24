@@ -16,7 +16,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { ChevronDown, GripVertical, Pencil } from "lucide-react";
+import { Check, ChevronDown, GripVertical, Pencil, RotateCcw } from "lucide-react";
 import { db, setEurToRsdRate, type Project } from "../db";
 import { Button, Card, Field, Input, Select } from "../components/ui";
 import type { DashboardData } from "../lib/data";
@@ -62,14 +62,18 @@ export function ProjektiPage({
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [orderOverride, setOrderOverride] = useState<number[] | null>(null);
+  const [showFinished, setShowFinished] = useState(false);
   const suppressClickUntil = useRef(0);
 
-  const sorted = sortProjects(projects);
+  const sorted = sortProjects(projects.filter((p) => p.status !== "zavrsen"));
   const ordered = orderOverride
     ? orderOverride
         .map((id) => sorted.find((p) => p.id === id))
         .filter((p): p is Project => !!p)
     : sorted;
+  const finished = projects
+    .filter((p) => p.status === "zavrsen")
+    .sort((a, b) => (b.endDate ?? "").localeCompare(a.endDate ?? "") || (b.id ?? 0) - (a.id ?? 0));
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { delay: 200, tolerance: 6 } }),
@@ -85,8 +89,8 @@ export function ProjektiPage({
   async function handleDragEnd(e: DragEndEvent) {
     suppressClickUntil.current = Date.now() + 400;
     const { active, over } = e;
-    if (!over || active.id === over.id) return;
     const ids = ordered.map((p) => p.id!);
+    if (!over || active.id === over.id || !ids.includes(Number(over.id))) return;
     const next = arrayMove(
       ids,
       ids.indexOf(Number(active.id)),
@@ -116,14 +120,15 @@ export function ProjektiPage({
       (m, p) => Math.max(m, p.sortOrder ?? p.id ?? 0),
       0,
     );
+    const status = String(fd.get("status") || "aktivan") as Project["status"];
     const id = await db.projects.add({
       name: String(fd.get("name") || "").trim(),
       client: String(fd.get("client") || "").trim(),
       clientPhone: String(fd.get("clientPhone") || "").trim(),
       description: "",
       startDate: String(fd.get("startDate") || todayISO()),
-      endDate: String(fd.get("endDate") || "") || null,
-      status: String(fd.get("status") || "aktivan") as Project["status"],
+      endDate: String(fd.get("endDate") || "") || (status === "zavrsen" ? todayISO() : null),
+      status,
       revenue: Number(fd.get("revenue") || 0),
       advance: Number(fd.get("advance") || 0),
       revenueCurrency: String(
@@ -146,14 +151,16 @@ export function ProjektiPage({
   async function update(e: FormEvent<HTMLFormElement>, id: number) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
+    const status = String(fd.get("status") || "aktivan") as Project["status"];
+    const endDate = String(fd.get("endDate") || "") || (status === "zavrsen" ? todayISO() : null);
     await db.projects.update(id, {
       name: String(fd.get("name") || "").trim(),
       client: String(fd.get("client") || "").trim(),
       clientPhone: String(fd.get("clientPhone") || "").trim(),
       description: String(fd.get("description") || "").trim(),
       startDate: String(fd.get("startDate")),
-      endDate: String(fd.get("endDate") || "") || null,
-      status: String(fd.get("status") || "aktivan") as Project["status"],
+      endDate,
+      status,
       revenue: Number(fd.get("revenue") || 0),
       advance: Number(fd.get("advance") || 0),
       revenueCurrency: String(
@@ -165,6 +172,20 @@ export function ProjektiPage({
       roofType: String(fd.get("roofType") || "dve_vode") as Project["roofType"],
     });
     setEditingId(null);
+    await onChange();
+  }
+
+  async function setFinished(p: Project, finishedNow: boolean) {
+    if (finishedNow) {
+      const price = formatSalePrice(p.revenue, p.revenueCurrency, projectRate(p, eurToRsd));
+      if (!confirm(`Označiti halu kao gotovu? ${price} se računa kao zarada od danas.`)) return;
+      await db.projects.update(p.id!, { status: "zavrsen", endDate: todayISO() });
+    } else {
+      if (!confirm("Vratiti halu u aktivne? Zarada se više neće računati dok je ponovo ne označiš kao gotovu.")) return;
+      await db.projects.update(p.id!, { status: "aktivan" });
+    }
+    setEditingId(null);
+    setSelectedId(finishedNow ? null : p.id!);
     await onChange();
   }
 
@@ -183,18 +204,20 @@ export function ProjektiPage({
           Hale — porudžbine
         </h1>
         <p className="mt-0.5 text-xs text-[var(--muted)]">
-          Dodirni halu za detalje · zadrži i prevuci da promeniš redosled
+          Dodirni halu za detalje · zadrži i prevuci da promeniš redosled · zarada se računa kad označiš halu kao gotovu
         </p>
       </div>
 
       <section className="space-y-2">
         <h2 className="text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
-          Poručene hale ({ordered.length})
+          Aktivne porudžbine ({ordered.length})
         </h2>
 
         {ordered.length === 0 ? (
           <Card>
-            <p className="text-sm text-[var(--muted)]">Još nema porudžbina.</p>
+            <p className="text-sm text-[var(--muted)]">
+              {finished.length ? "Nema aktivnih porudžbina." : "Još nema porudžbina."}
+            </p>
           </Card>
         ) : (
           <DndContext
@@ -219,7 +242,7 @@ export function ProjektiPage({
                   <HallRow
                     key={p.id}
                     project={p}
-                    index={index}
+                    badge={index + 1}
                     open={selectedId === p.id}
                     editing={editingId === p.id}
                     eurToRsd={eurToRsd}
@@ -228,12 +251,58 @@ export function ProjektiPage({
                     onCancelEdit={() => setEditingId(null)}
                     onSave={(e) => update(e, p.id!)}
                     onRemove={() => remove(p.id!)}
+                    onFinish={() => setFinished(p, true)}
                   />
                 ))}
               </ul>
             </SortableContext>
           </DndContext>
         )}
+
+        {finished.length ? (
+          <div className="rounded-lg border border-[var(--line)] bg-[var(--surface)]">
+            <button
+              type="button"
+              onClick={() => setShowFinished((v) => !v)}
+              aria-expanded={showFinished}
+              className="flex w-full items-center gap-2 px-3 py-2 text-left"
+            >
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-emerald-600 text-white">
+                <Check className="h-4 w-4" />
+              </span>
+              <span className="min-w-0 flex-1 text-sm font-semibold">
+                Završene hale ({finished.length})
+              </span>
+              <ChevronDown
+                className={cn(
+                  "h-4 w-4 shrink-0 opacity-60 transition-transform",
+                  showFinished && "rotate-180",
+                )}
+              />
+            </button>
+            {showFinished ? (
+              <ul className="space-y-1.5 border-t border-[var(--line)] p-2">
+                {finished.map((p) => (
+                  <HallRow
+                    key={p.id}
+                    project={p}
+                    badge={<Check className="h-3.5 w-3.5" />}
+                    draggable={false}
+                    open={selectedId === p.id}
+                    editing={editingId === p.id}
+                    eurToRsd={eurToRsd}
+                    onToggle={() => toggle(p.id!)}
+                    onEdit={() => setEditingId(p.id!)}
+                    onCancelEdit={() => setEditingId(null)}
+                    onSave={(e) => update(e, p.id!)}
+                    onRemove={() => remove(p.id!)}
+                    onReopen={() => setFinished(p, false)}
+                  />
+                ))}
+              </ul>
+            ) : null}
+          </div>
+        ) : null}
 
         <div className="flex flex-wrap gap-2 pt-1 text-[10px] text-[var(--muted)]">
           {Object.entries(HALL_WIDTH_COLORS).map(([w, c]) => (
@@ -375,7 +444,8 @@ export function ProjektiPage({
 
 function HallRow({
   project: p,
-  index,
+  badge,
+  draggable = true,
   open,
   editing,
   eurToRsd,
@@ -384,9 +454,12 @@ function HallRow({
   onCancelEdit,
   onSave,
   onRemove,
+  onFinish,
+  onReopen,
 }: {
   project: Project;
-  index: number;
+  badge: React.ReactNode;
+  draggable?: boolean;
   open: boolean;
   editing: boolean;
   eurToRsd: number;
@@ -395,6 +468,8 @@ function HallRow({
   onCancelEdit: () => void;
   onSave: (e: FormEvent<HTMLFormElement>) => void;
   onRemove: () => void;
+  onFinish?: () => void;
+  onReopen?: () => void;
 }) {
   const {
     attributes,
@@ -403,7 +478,7 @@ function HallRow({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: p.id! });
+  } = useSortable({ id: p.id!, disabled: !draggable });
   const colors = hallColor(p.widthM);
   const dashed = p.roofType === "jedna_voda";
   const done = p.status === "zavrsen";
@@ -420,15 +495,14 @@ function HallRow({
     >
       <button
         type="button"
-        {...attributes}
-        {...listeners}
+        {...(draggable ? { ...attributes, ...listeners } : {})}
         onClick={onToggle}
         aria-expanded={open}
         className={cn(
           "flex w-full touch-manipulation select-none items-center gap-2 border-2 px-2 py-1.5 text-left transition-shadow [-webkit-touch-callout:none]",
           open ? "rounded-t-lg border-b-0" : "rounded-lg",
           isDragging && "scale-[1.02] shadow-lg",
-          done && !open && "opacity-60",
+          done && !open && "opacity-75",
         )}
         style={{
           backgroundColor: colors.bg,
@@ -437,12 +511,12 @@ function HallRow({
           color: colors.text,
         }}
       >
-        <GripVertical className="h-4 w-4 shrink-0 opacity-40" />
+        {draggable ? <GripVertical className="h-4 w-4 shrink-0 opacity-40" /> : null}
         <span
           className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-md px-1 text-[11px] font-bold text-white"
           style={{ backgroundColor: colors.chip }}
         >
-          {index + 1}
+          {badge}
         </span>
         <div className="min-w-0 flex-1">
           <p className="truncate font-[family-name:var(--font-display)] text-sm font-bold leading-tight tracking-tight">
@@ -451,7 +525,11 @@ function HallRow({
           <p className="truncate text-[11px] leading-tight opacity-75">
             {p.roofType === "jedna_voda" ? "1 voda" : "2 vode"}
             {p.client ? ` · ${p.client}` : ""}
-            {p.status !== "aktivan" ? ` · ${statusLabel(p.status)}` : ""}
+            {done
+              ? ` · završeno ${formatDate(p.endDate)}`
+              : p.status !== "aktivan"
+                ? ` · ${statusLabel(p.status)}`
+                : ""}
           </p>
         </div>
         <ChevronDown
@@ -479,7 +557,13 @@ function HallRow({
               onRemove={onRemove}
             />
           ) : (
-            <HallDetails project={p} eurToRsd={eurToRsd} onEdit={onEdit} />
+            <HallDetails
+              project={p}
+              eurToRsd={eurToRsd}
+              onEdit={onEdit}
+              onFinish={onFinish}
+              onReopen={onReopen}
+            />
           )}
         </div>
       ) : null}
@@ -512,10 +596,14 @@ function HallDetails({
   project: p,
   eurToRsd,
   onEdit,
+  onFinish,
+  onReopen,
 }: {
   project: Project;
   eurToRsd: number;
   onEdit: () => void;
+  onFinish?: () => void;
+  onReopen?: () => void;
 }) {
   return (
     <div className="space-y-2.5">
@@ -564,16 +652,34 @@ function HallDetails({
           </DetailItem>
         ) : null}
       </dl>
-      <Button
-        type="button"
-        size="sm"
-        variant="secondary"
-        className="w-full"
-        onClick={onEdit}
-      >
-        <Pencil className="h-3.5 w-3.5" />
-        Izmeni
-      </Button>
+      {p.status !== "zavrsen" ? (
+        <p className="rounded-md bg-amber-50 px-2 py-1 text-[11px] text-amber-900">
+          Cena se još ne računa u zaradu — tek kad označiš halu kao gotovu.
+        </p>
+      ) : null}
+      <div className="grid grid-cols-2 gap-2">
+        <Button type="button" size="sm" variant="secondary" onClick={onEdit}>
+          <Pencil className="h-3.5 w-3.5" />
+          Izmeni
+        </Button>
+        {onFinish ? (
+          <Button
+            type="button"
+            size="sm"
+            className="bg-emerald-600 hover:bg-emerald-700"
+            onClick={onFinish}
+          >
+            <Check className="h-4 w-4" />
+            Gotovo
+          </Button>
+        ) : null}
+        {onReopen ? (
+          <Button type="button" size="sm" variant="ghost" onClick={onReopen}>
+            <RotateCcw className="h-3.5 w-3.5" />
+            Vrati u aktivne
+          </Button>
+        ) : null}
+      </div>
     </div>
   );
 }
