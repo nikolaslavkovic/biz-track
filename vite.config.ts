@@ -52,9 +52,16 @@ export default defineConfig({
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
         navigateFallback: "index.html",
+        navigateFallbackDenylist: [/^\/api\//],
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: true,
+        runtimeCaching: [
+          {
+            urlPattern: /\/api\//,
+            handler: "NetworkOnly",
+          },
+        ],
       },
     }),
   ],
@@ -64,12 +71,24 @@ export default defineConfig({
     headers: {
       "Cache-Control": "no-store",
     },
+    proxy: {
+      "/api": {
+        target: "https://firma-racun.vercel.app",
+        changeOrigin: true,
+      },
+    },
   },
   preview: {
     host: "0.0.0.0",
     port: 43127,
     headers: {
       "Cache-Control": "no-store",
+    },
+    proxy: {
+      "/api": {
+        target: "https://firma-racun.vercel.app",
+        changeOrigin: true,
+      },
     },
   },
 });

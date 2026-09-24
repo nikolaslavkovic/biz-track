@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { OverviewLineChart, PeriodTabs } from "../components/Charts";
+import { CloudCard } from "../components/CloudCard";
 import { DataImportCard } from "../components/DataImportCard";
 import { InsightsSection } from "../components/InsightsSection";
 import { Button } from "../components/ui";
@@ -119,6 +120,8 @@ export function HomePage({
       <OverviewLineChart series={overview.series} />
 
       {insights ? <InsightsSection insights={insights} /> : null}
+
+      <CloudCard onChange={onChange} />
 
       <DataImportCard
         hasImported={
